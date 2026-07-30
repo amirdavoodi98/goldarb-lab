@@ -19,7 +19,9 @@ pandas = ["pandas>=2.0"]
 dev = ["pytest>=8.0", "respx>=0.21"]
 
 [project.urls]
-Homepage = "https://github.com/amirdavoodi98/gold-arbitrage"
+Homepage = "https://github.com/amirdavoodi98/goldarb-lab"
+Repository = "https://github.com/amirdavoodi98/goldarb-lab"
+Issues = "https://github.com/amirdavoodi98/goldarb-lab/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/goldarb"]
@@ -27,3 +29,10 @@ packages = ["src/goldarb"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

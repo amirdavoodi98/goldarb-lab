@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from datetime import date, datetime, timedelta
 from typing import Any, Iterator
 from urllib.parse import quote

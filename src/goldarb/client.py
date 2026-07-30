@@ -34,7 +34,7 @@ class LabClient:
         token = os.environ.get(token_var, "").strip()
         if not base or not token:
             raise RuntimeError(
-                f"Set {base_url_var} and {token_var} (see goldarb-lab/README.md)"
+                f"Set {base_url_var} and {token_var} (see README.md)"
             )
         return cls(base_url=base, token=token, timeout=timeout)
 
