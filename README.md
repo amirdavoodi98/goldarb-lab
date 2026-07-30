@@ -39,6 +39,7 @@ c = LabClient.login(base_url="https://goldarb.ir", username="...", password="...
 | nav_model_composite | premium bands + gold18 + fair NAV | `fund.premium_stats`, `market.gold_daily`, `fund.fair_nav` |
 | flow_divergence | institutional buy/sell vol | `fund.flow` |
 | FX / spot overlay | XAU 1m, USDT/IRT 1m | `market.xau`, `market.usdt` |
+| IME CDC (شمش/سکه/نقره) | live tip + daily stats | `market.ime_cdc_live`, `ime_cdc_stats` |
 | paper-live / signal gate | live tip + orderbook | `market.live_snapshot`, `fund.orderbook` |
 
 ## Quick start — premium_threshold backtest
@@ -78,6 +79,7 @@ with LabClient.from_env() as c:
     usdt = c.market.usdt(start="2026-07-01", end="2026-07-03")
     tip = c.market.usdt_live()
     units = c.fund.issued_units("طلا")  # near-daily as-of — not tick-live
+    silver = c.market.ime_cdc_stats("SilverBar", days=90)  # daily CDC (may include import)
     stats = c.fund.premium_stats("طلا", window=90)
     spreads = c.fund.spreads(window=90)
     snap = c.market.live_snapshot(include=("refs", "funds", "orderbook"))
@@ -89,8 +91,13 @@ With pandas: `candles_df`, `flow_df`, `xau_df`, `usdt_df`, `gold_daily_df`.
 
 | Series | Unit / grain | Caveat |
 |--------|--------------|--------|
-| `market.usdt` / `usdt_live` | **toman** (Nobitex Rials÷10 on write) | History via `?days≤31`; live tip is platform Redis/`UsdtLive` |
+| `market.usdt` / `usdt_live` | **toman** (Nobitex Rials÷10 on write) | History via `?days≤31`; `source` may be `import` (ops CSV) or `nobitex`; live tip is platform Redis/`UsdtLive` |
+| `fund.candles(…, grain="daily")` | close + `nav_price` / premium | Offline NAV CSV attach fills historical `nav_price` on existing days (platform ops) |
+| `market.ime_cdc_stats` | daily CDC aggregates | Catalogue codes `GoldBar` / `GoldCoin` / `SilverBar`; history may include ops `source=import` |
 | `fund.issued_units` / `nav_live.units` | count + `units_deven` YYYYMMDD | Near-daily as-of from TSETMC — **not** intraday; ≠ Codal `legs[].quantity` |
+
+Ingestion (CSV/JSON manage.py importers) lives on the **platform**, not this SDK — see
+platform `docs/ops/offline-csv-import.md`.
 
 Examples:
 
@@ -103,7 +110,7 @@ python examples/strategy_data_bundle.py
 python examples/backtest_premium_threshold.py
 ```
 
-## API surface (v0.4)
+## API surface (v0.5)
 
 **Strategies:** `run_premium_threshold` (offline Lab `premium_threshold` clone)
 
@@ -113,7 +120,8 @@ python examples/backtest_premium_threshold.py
 `nav_live`, `navs_live`, `issued_units`
 
 **Market:** `xau`, `xag`, `xau_df`, `gold_daily`, `gold_daily_df`, `usdt`, `usdt_df`,
-`usdt_live`, `live_snapshot`, `refs_live`, `spot_live`
+`usdt_live`, `ime_cdc_live`, `ime_cdc_stats`, `ime_cdc_arbitrage`, `live_snapshot`,
+`refs_live`, `spot_live`
 
 ## API limits
 
