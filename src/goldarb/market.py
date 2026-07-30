@@ -249,3 +249,52 @@ class MarketAPI:
         """Near-live XAU/XAG tip with freshness."""
         payload = self._http.get_json("/api/v1/market/spot/live/")
         return payload if isinstance(payload, dict) else {"raw": payload}
+
+    # --- IME CDC (gold/silver warehouse certificates) --------------------
+
+    def ime_cdc_live(self, code: str | None = None) -> dict[str, Any]:
+        """
+        Near-live IME continuous-deposit quotes.
+
+        Omit ``code`` for the full board (``GET /market/ime-cdc/``).
+        Pass ``GoldBar`` / ``GoldCoin`` / ``SilverBar`` for one contract.
+        Read-only — does not scrape IME.
+        """
+        if code is None or not str(code).strip():
+            path = "/api/v1/market/ime-cdc/"
+        else:
+            path = f"/api/v1/market/ime-cdc/{str(code).strip()}/"
+        payload = self._http.get_json(path)
+        return payload if isinstance(payload, dict) else {"raw": payload}
+
+    def ime_cdc_stats(
+        self,
+        code: str = "SilverBar",
+        *,
+        days: int = 30,
+    ) -> dict[str, Any]:
+        """
+        Daily IME CDC aggregates (``ImeCdcDailyStat``), incl. offline-imported rows.
+
+        Catalogue codes only: ``GoldBar``, ``GoldCoin``, ``SilverBar``.
+        Platform clamps ``days`` to 1…180. History may include ``source=import``
+        after ops CSV seed (see platform ``docs/ops/offline-csv-import.md``).
+        """
+        code_key = str(code).strip()
+        if not code_key:
+            raise ValueError("code is required")
+        days_clamped = max(1, min(int(days), 180))
+        payload = self._http.get_json(
+            f"/api/v1/market/ime-cdc/{code_key}/stats/",
+            {"days": days_clamped},
+        )
+        return payload if isinstance(payload, dict) else {"raw": payload}
+
+    def ime_cdc_arbitrage(self, *, benchmark: str = "GoldBar") -> dict[str, Any]:
+        """Relative day-move arb: gold ETF day change vs IME benchmark."""
+        bench = str(benchmark).strip() or "GoldBar"
+        payload = self._http.get_json(
+            "/api/v1/market/ime-cdc/arbitrage/",
+            {"benchmark": bench},
+        )
+        return payload if isinstance(payload, dict) else {"raw": payload}
