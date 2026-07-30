@@ -38,6 +38,31 @@ class LabClient:
             )
         return cls(base_url=base, token=token, timeout=timeout)
 
+    @classmethod
+    def login(
+        cls,
+        *,
+        base_url: str,
+        username: str,
+        password: str,
+        timeout: float = 60.0,
+    ) -> Self:
+        """Obtain a DRF token via ``POST /api/v1/auth/token/`` then build a client."""
+        import httpx
+
+        base = base_url.rstrip("/")
+        resp = httpx.post(
+            f"{base}/api/v1/auth/token/",
+            json={"username": username, "password": password},
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        token = payload.get("token") or payload.get("key")
+        if not token:
+            raise RuntimeError("auth/token response missing token")
+        return cls(base_url=base, token=str(token), timeout=timeout)
+
     def close(self) -> None:
         self._http.close()
 
