@@ -41,7 +41,31 @@ c = LabClient.login(base_url="https://goldarb.ir", username="...", password="...
 | FX / spot overlay | XAU 1m, USDT/IRT 1m | `market.xau`, `market.usdt` |
 | paper-live / signal gate | live tip + orderbook | `market.live_snapshot`, `fund.orderbook` |
 
-## Quick start
+## Quick start — premium_threshold backtest
+
+```python
+from datetime import date, timedelta
+from goldarb import LabClient, run_premium_threshold
+
+end = date.today()
+start = end - timedelta(days=89)
+
+with LabClient.from_env() as c:
+    bars = c.fund.candles("طلا", start=start.isoformat(), end=end.isoformat(), grain="daily")
+
+result = run_premium_threshold(bars)  # buy ≤ -2%, sell ≥ +2%, next_bar fill
+print(result.summary())
+```
+
+CLI example:
+
+```bash
+export GOLDARB_BASE_URL=https://goldarb.ir
+export GOLDARB_TOKEN=...
+python examples/backtest_premium_threshold.py
+```
+
+## Quick start — data fetch
 
 ```python
 from goldarb import LabClient
@@ -64,9 +88,12 @@ Examples:
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py
 python examples/strategy_data_bundle.py
+python examples/backtest_premium_threshold.py
 ```
 
-## API surface (v0.2)
+## API surface (v0.3)
+
+**Strategies:** `run_premium_threshold` (offline Lab `premium_threshold` clone)
 
 **Fund:** `candles`, `candles_many`, `candles_df`, `meta`, `symbols`, `list_symbols`,
 `comparison`, `flow`, `bubbles`, `spreads`, `premium_stats`, `holdings`,
