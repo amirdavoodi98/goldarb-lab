@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any, Sequence
 
 from ._http import _parse_day, iter_date_chunks
@@ -14,6 +14,10 @@ if TYPE_CHECKING:
 _METAL_1M_MAX_SPAN = 31
 _USDT_MAX_DAYS = 31
 _LIVE_SNAPSHOT_INCLUDES = frozenset({"refs", "funds", "orderbook", "ime", "fair_nav"})
+
+
+def _calendar_today() -> date:
+    return datetime.now(tz=UTC).date()
 
 
 class MarketAPI:
@@ -130,22 +134,83 @@ class MarketAPI:
             time_col="date",
         )
 
-    def usdt(self, *, days: int = 7) -> list[dict[str, Any]]:
+    def usdt(
+        self,
+        *,
+        start: date | datetime | str | None = None,
+        end: date | datetime | str | None = None,
+        days: int | None = None,
+    ) -> list[dict[str, Any]]:
         """
-        USDT/IRR 1-minute bars (platform clamp ≤ 31 days).
+        USDT/IRR 1-minute OHLCV bars (prices in **toman**).
 
-        Returned ascending by ``bar_at`` with short OHLC aliases.
+        Platform ``GET /market/usdt/?days=`` is a lookback from *now* (max 31d).
+        Prefer ``start``/``end`` for strategy ranges — the SDK chunks spans longer
+        than 31 calendar days, requests each lookback window, then filters and
+        sorts ascending by ``bar_at`` (with short OHLC aliases).
+
+        ``source`` may be ``import`` or ``nobitex``. Does not call Nobitex itself.
         """
-        days_clamped = max(1, min(int(days), _USDT_MAX_DAYS))
+        if start is not None and end is not None:
+            if days is not None:
+                raise ValueError("pass either start/end or days=, not both")
+            return self._usdt_range(start=start, end=end)
+        days_clamped = max(1, min(int(days if days is not None else 7), _USDT_MAX_DAYS))
+        return self._usdt_lookback(days_clamped)
+
+    def usdt_df(
+        self,
+        *,
+        start: date | datetime | str | None = None,
+        end: date | datetime | str | None = None,
+        days: int | None = None,
+    ) -> Any:
+        return rows_to_df(
+            self.usdt(start=start, end=end, days=days),
+            time_col="bar_at",
+        )
+
+    def usdt_live(self) -> dict[str, Any]:
+        """
+        Near-live USDT/IRR tip from the platform (Nobitex-fed; unit=toman).
+
+        Read-only — never scrapes Nobitex from the SDK.
+        """
+        payload = self._http.get_json("/api/v1/market/usdt/live/")
+        return payload if isinstance(payload, dict) else {"raw": payload}
+
+    def _usdt_lookback(self, days: int) -> list[dict[str, Any]]:
         rows = self._http.get_paginated_results(
             "/api/v1/market/usdt/",
-            {"days": days_clamped, "page_size": 500},
+            {"days": int(days), "page_size": 500},
         )
         aliased = [alias_ohlc(r) if isinstance(r, dict) else r for r in rows]
         return sort_by_key(aliased, "bar_at")
 
-    def usdt_df(self, *, days: int = 7) -> Any:
-        return rows_to_df(self.usdt(days=days), time_col="bar_at")
+    def _usdt_range(
+        self,
+        *,
+        start: date | datetime | str,
+        end: date | datetime | str,
+    ) -> list[dict[str, Any]]:
+        today = _calendar_today()
+        by_bar: dict[str, dict[str, Any]] = {}
+        for a, b in iter_date_chunks(start, end, max_span_days=_USDT_MAX_DAYS):
+            lookback = (today - a).days + 1
+            if lookback < 1:
+                continue
+            days = max(1, min(lookback, _USDT_MAX_DAYS))
+            for row in self._usdt_lookback(days):
+                raw = row.get("bar_at")
+                if raw is None:
+                    continue
+                try:
+                    day = _parse_day(str(raw))
+                except ValueError:
+                    continue
+                if a <= day <= b:
+                    by_bar[str(raw)] = row
+        return [by_bar[k] for k in sorted(by_bar)]
 
     # --- live (paper-live / signal trust gate) ---------------------------
 

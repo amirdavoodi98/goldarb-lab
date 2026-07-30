@@ -74,7 +74,10 @@ with LabClient.from_env() as c:
     bars = c.fund.candles("طلا", start="2026-07-01", end="2026-07-03", grain="1m")
     flow = c.fund.flow("طلا", days=90)
     xau = c.market.xau(start="2026-07-01", end="2026-07-03", grain="1m")
-    usdt = c.market.usdt(days=7)
+    # USDT/IRR 1m — prices in **toman** (source may be import|nobitex)
+    usdt = c.market.usdt(start="2026-07-01", end="2026-07-03")
+    tip = c.market.usdt_live()
+    units = c.fund.issued_units("طلا")  # near-daily as-of — not tick-live
     stats = c.fund.premium_stats("طلا", window=90)
     spreads = c.fund.spreads(window=90)
     snap = c.market.live_snapshot(include=("refs", "funds", "orderbook"))
@@ -82,26 +85,35 @@ with LabClient.from_env() as c:
 
 With pandas: `candles_df`, `flow_df`, `xau_df`, `usdt_df`, `gold_daily_df`.
 
+### Units & freshness notes
+
+| Series | Unit / grain | Caveat |
+|--------|--------------|--------|
+| `market.usdt` / `usdt_live` | **toman** (Nobitex Rials÷10 on write) | History via `?days≤31`; live tip is platform Redis/`UsdtLive` |
+| `fund.issued_units` / `nav_live.units` | count + `units_deven` YYYYMMDD | Near-daily as-of from TSETMC — **not** intraday; ≠ Codal `legs[].quantity` |
+
 Examples:
 
 ```bash
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py
+python examples/fetch_usdt.py
+python examples/fetch_issued_units.py
 python examples/strategy_data_bundle.py
 python examples/backtest_premium_threshold.py
 ```
 
-## API surface (v0.3)
+## API surface (v0.4)
 
 **Strategies:** `run_premium_threshold` (offline Lab `premium_threshold` clone)
 
 **Fund:** `candles`, `candles_many`, `candles_df`, `meta`, `symbols`, `list_symbols`,
 `comparison`, `flow`, `bubbles`, `spreads`, `premium_stats`, `holdings`,
 `holdings_all`, `fair_nav`, `orderbook`, `orderbooks`, `last_price`, `last_prices`,
-`nav_live`, `navs_live`
+`nav_live`, `navs_live`, `issued_units`
 
 **Market:** `xau`, `xag`, `xau_df`, `gold_daily`, `gold_daily_df`, `usdt`, `usdt_df`,
-`live_snapshot`, `refs_live`, `spot_live`
+`usdt_live`, `live_snapshot`, `refs_live`, `spot_live`
 
 ## API limits
 
@@ -110,7 +122,7 @@ python examples/backtest_premium_threshold.py
 | Fund bars `grain=1m` | max **7** calendar days | auto-chunks |
 | Fund bars `grain=daily` | max **366** days | auto-chunks |
 | Metal bars (XAU/XAG 1m) | max **31** days | auto-chunks + pagination |
-| USDT 1m | max **31** days | clamped |
+| USDT 1m | max **31** days lookback | `start`/`end` chunks + filter; or `days=` |
 
 Metal/USDT rows include both `close_price` and aliased `close` (same for O/H/L).
 

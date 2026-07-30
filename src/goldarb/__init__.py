@@ -8,4 +8,4 @@ __all__ = [
     "PremiumThresholdResult",
     "run_premium_threshold",
 ]
-__version__ = "0.3.0"
+__version__ = "0.4.0"

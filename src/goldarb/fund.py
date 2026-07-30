@@ -193,12 +193,44 @@ class FundAPI:
         return self._http.get_json("/api/v1/funds/last-price/")
 
     def nav_live(self, symbol: str) -> dict[str, Any]:
+        """
+        Near-live TSETMC NAV tip for one fund.
+
+        Includes ``units`` (``etfIssuedUnit``) and ``units_deven`` (YYYYMMDD as-of)
+        when the platform has them. Grain for units is **near-daily**, not tick-live.
+        Do not confuse ``units`` with Codal holdings ``legs[].quantity``.
+        """
         path = f"/api/v1/funds/{encode_symbol(symbol)}/nav/live/"
         payload = self._http.get_json(path)
         return payload if isinstance(payload, dict) else {"raw": payload}
 
     def navs_live(self) -> Any:
+        """Near-live NAV tips for all gold funds (includes issued units when present)."""
         return self._http.get_json("/api/v1/funds/nav/live/")
+
+    def issued_units(self, symbol: str) -> dict[str, Any]:
+        """
+        Thin view of outstanding/issued ETF units from ``nav_live``.
+
+        Returns ``units``, ``units_deven``, ``as_of``, ``status``, ``symbol``, …
+        Freshness is near-daily as-of (``units_deven``), not intraday ticks.
+        """
+        payload = self.nav_live(symbol)
+        return {
+            "symbol": payload.get("symbol", symbol),
+            "units": payload.get("units"),
+            "units_deven": payload.get("units_deven"),
+            "as_of": payload.get("as_of"),
+            "nav_date": payload.get("nav_date"),
+            "status": payload.get("status"),
+            "age_seconds": payload.get("age_seconds"),
+            "source": payload.get("source"),
+            "grain": "near_daily",
+            "note": (
+                "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; "
+                "not tick-live"
+            ),
+        }
 
     def symbols(self) -> list[str]:
         """Convenience: sorted symbol strings from ``meta()``."""
