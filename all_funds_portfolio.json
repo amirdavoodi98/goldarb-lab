@@ -1,0 +1,1574 @@
+{
+  "گوهر": {
+    "ins_code": "12390706505809150",
+    "holdings": {
+      "symbol": "گوهر",
+      "ins_code": "12390706505809150",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:18.581633+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "مبتنی بر کالای کیان",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=07Q5YqhvvofheD3ZAQQQaQQQzidg%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=PNS6e57S2O22dsvu0LpPfQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: گوهر_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 8201290.0,
+          "weight_pct": 91.0842,
+          "raw_label_fa": "گواهی شمش طلا با نماد معاملاتی  CD1G0B0001"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 9561.0,
+          "weight_pct": 8.0908,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "silver_bar_cert",
+          "quantity": 132000.0,
+          "weight_pct": 0.2546,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش نقره"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": 10000.0,
+          "weight_pct": 0.0741,
+          "raw_label_fa": "صکوک اجاره فارس07-بدون ضامن؛ مرابحه ایده گستران زمان070309؛ مرابحه کرمان موتور-کیان051223؛ مرابحه مادیران-کیان060626؛ مرابحه توسعه معادن-کیان071120؛ سپرده بانکی نزد بانک گردشگری1.2312858.9967.164"
+        }
+      ],
+      "weight_sum_pct": 99.5037,
+      "is_pilot": true
+    },
+    "issued_units": {
+      "symbol": "گوهر",
+      "units": 260907872,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:38.933812+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 177.2,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "زر": {
+    "ins_code": "33254899395816171",
+    "holdings": {
+      "symbol": "زر",
+      "ins_code": "33254899395816171",
+      "status": "ok",
+      "as_of": "2026-07-05",
+      "age_days": 30,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:24.207953+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "امید ثروت ایرانیان",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=PeeE16mYI8QQQaQQQzVo4OpLcI5A%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=6OOObOOOB4t0S7qenMWOOObOOOAOVN9kSg%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۴/۱۴؛ شیت: برای ماه منتهی به 1405/04/14؛ فایل خام: زر_2026-07-05.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 4312836.0,
+          "weight_pct": 82.5226,
+          "raw_label_fa": "گواهی شمش طلا با نماد معاملاتی CD1G0B0001"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 12049.0,
+          "weight_pct": 17.4705,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید CD1GOC0001"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 0.685,
+          "raw_label_fa": "سپرده بانکی نزد بانک خاورمیانه؛ سپرده بانکی نزد بانک سامان؛ سپرده بانکی نزد بانک ملت؛ سپرده بانکی نزد بانک صادرات؛ سپرده بانکی نزد بانک گردشگری"
+        }
+      ],
+      "weight_sum_pct": 100.6781,
+      "is_pilot": true
+    },
+    "issued_units": {
+      "symbol": "زر",
+      "units": 164623822,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:43.438299+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 173.1,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "عیار": {
+    "ins_code": "34144395039913458",
+    "holdings": {
+      "symbol": "عیار",
+      "ins_code": "34144395039913458",
+      "status": "ok",
+      "as_of": "2026-07-22",
+      "age_days": 13,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:29.762210+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "طلای عیار مفید",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=GQaWUZ1FBi91ZU3Pv2OYqQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=LsydjMqjXz80kgHzWkg3FQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۴/۳۱؛ شیت: برای ماه منتهی به 1405/04/31؛ فایل خام: عیار_2026-07-22.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 84477023.0,
+          "weight_pct": 87.2615,
+          "raw_label_fa": "شمش طلا"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 160271.0,
+          "weight_pct": 12.494,
+          "raw_label_fa": "گواهی سپرده تمام سکه بهار آزادی طرح جدید"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "silver_bar_cert",
+          "quantity": 445375.0,
+          "weight_pct": 0.0778,
+          "raw_label_fa": "شمش نقره"
+        }
+      ],
+      "weight_sum_pct": 99.8333,
+      "is_pilot": true
+    },
+    "issued_units": {
+      "symbol": "عیار",
+      "units": 4794240416,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:44.981576+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 172.0,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "کهربا": {
+    "ins_code": "25559236668122210",
+    "holdings": {
+      "symbol": "کهربا",
+      "ins_code": "25559236668122210",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:35.374421+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "مبتنی برکالای کهربا",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=RxdPrmwIIlkG9bSJTkCWYA%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=MBSp9B2ccxwDhCAn3pp5Og%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: کهربا_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 18263384.0,
+          "weight_pct": 84.458,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 43040.0,
+          "weight_pct": 15.1656,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        }
+      ],
+      "weight_sum_pct": 99.6236,
+      "is_pilot": true
+    },
+    "issued_units": {
+      "symbol": "کهربا",
+      "units": 2943700000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:45.466774+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 172.0,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "طلا": {
+    "ins_code": "46700660505281786",
+    "holdings": {
+      "symbol": "طلا",
+      "ins_code": "46700660505281786",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:12.239280+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "پشتوانه چند کالایی پارسیان",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=y2HFDQQQaQQQo0dwqm11FwgmZvrA%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=dRwBj67WGYZEFwB9DOwPlA%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: طلا_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 34373870.0,
+          "weight_pct": 87.2293,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 65712.0,
+          "weight_pct": 12.706,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        }
+      ],
+      "weight_sum_pct": 99.9353,
+      "is_pilot": true
+    },
+    "issued_units": {
+      "symbol": "طلا",
+      "units": 737700045,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:05:38.040270+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 0.1,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "گلدیس": {
+    "ins_code": "68376789401977331",
+    "holdings": {
+      "symbol": "گلدیس",
+      "ins_code": "68376789401977331",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:41.172749+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "پشتوانه طلای گلدیس نوین",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=OOObOOOOe79GfvAob3x1TpzvOfhA%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=7csKbSoYvPhM1TAUQJKMEg%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ فایل خام: گلدیس_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 831022.0,
+          "weight_pct": 88.082,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 1329.0,
+          "weight_pct": 10.7332,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "silver_bar_cert",
+          "quantity": 58786.0,
+          "weight_pct": 1.082,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش نقره 999.9"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "other",
+          "quantity": null,
+          "weight_pct": 0.5436,
+          "raw_label_fa": "اقتصاد نوین؛ صادرات"
+        }
+      ],
+      "weight_sum_pct": 100.4408,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "گلدیس",
+      "units": 710221977,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:46.781017+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 171.8,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "آلتون": {
+    "ins_code": "28374437855144739",
+    "holdings": {
+      "symbol": "آلتون",
+      "ins_code": "28374437855144739",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:47.985903+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر کالای آسمان",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=7ej1t1AOUQQQaQQQydJwQSKZIVCw%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=6DeQQQaQQQrmVeqh4kua4EQc4nyQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: آلتون_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 5032948.0,
+          "weight_pct": 94.0055,
+          "raw_label_fa": "گواهی سپرده کالایی شمش طلا"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 4140.0,
+          "weight_pct": 5.892,
+          "raw_label_fa": "گواهی سپرده کالایی سکه طلا"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 0.0069,
+          "raw_label_fa": "بانک خاورمیانه"
+        }
+      ],
+      "weight_sum_pct": 99.9044,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "آلتون",
+      "units": 2194652702,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:47.778383+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 171.6,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "درنا": {
+    "ins_code": "17248898258246807",
+    "holdings": {
+      "symbol": "درنا",
+      "ins_code": "17248898258246807",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:53.289200+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "پشتوانه طلا درنا",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=S1e0OG4ujeikNkt9rZaU1g%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=4UDASo6vjZXhnCeWQQQaQQQ5f3Jg%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: درنا_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 556500.0,
+          "weight_pct": 99.9693,
+          "raw_label_fa": "شمش طلا CD1GOB0001"
+        }
+      ],
+      "weight_sum_pct": 99.9693,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "درنا",
+      "units": 613335183,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:48.804041+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 171.0,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "لیان": {
+    "ins_code": "6362118829011821",
+    "holdings": {
+      "symbol": "لیان",
+      "ins_code": "6362118829011821",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:38:59.553137+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "کالایی دیبای معیار",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=OOObOOODGKNFGwKIbErofWQDWwOQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=SOdRxMAiT6p1SYWuLYNxMQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: لیان_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 1857125.0,
+          "weight_pct": 98.7819,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "silver_bar_cert",
+          "quantity": 100000.0,
+          "weight_pct": 0.9237,
+          "raw_label_fa": "شمش نقره SilverBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "derivatives",
+          "quantity": 7975.0,
+          "weight_pct": 0.2396,
+          "raw_label_fa": "اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBBA05C1400 14000000.0000-1405/11/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBBA05C1800 18000000.0000-1405/11/27"
+        }
+      ],
+      "weight_sum_pct": 99.9452,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "لیان",
+      "units": 1335866047,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:49.790171+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 170.8,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "ناب": {
+    "ins_code": "30582275818828857",
+    "holdings": {
+      "symbol": "ناب",
+      "ins_code": "30582275818828857",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:05.322987+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر سکه طلا نهایت نگر",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=2Pe5Q9mqZckyOCZWnrU8nQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=JaGARCWBZxdf9U8f3GgFAQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: ‫برای ماه منتهی به 1405/03/31؛ فایل خام: ناب_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 4601674.0,
+          "weight_pct": 92.6071,
+          "raw_label_fa": "گواهی شمش طلا با نماد معاملاتی  CD1G0B0001"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 4135.0,
+          "weight_pct": 6.3406,
+          "raw_label_fa": "CD1GOC0001 گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 0.7531,
+          "raw_label_fa": "بانک گردشگری"
+        }
+      ],
+      "weight_sum_pct": 99.7008,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "ناب",
+      "units": 1939938227,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:50.814163+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 170.2,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "آتش": {
+    "ins_code": "56987424987755487",
+    "holdings": {
+      "symbol": "آتش",
+      "ins_code": "56987424987755487",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:11.838748+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار چند کالایی کهکشان فیروزه",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=jPvb6klY1A5t2s6znaRAkw%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=M5ySTFjiAS51B1sSPeeTKQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: آتش_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 4596853.0,
+          "weight_pct": 97.9886,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 0.0973,
+          "raw_label_fa": "سپرده کوتاه مدت بانک گردشگری"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "derivatives",
+          "quantity": 80371.0,
+          "weight_pct": 0.8583,
+          "raw_label_fa": "اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C1800 18000000.0000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C2000 20000000.0000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBBA05C1400 14000000.0000-1405/11/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBBA05C1800 18000000.0000-1405/11/27"
+        }
+      ],
+      "weight_sum_pct": 98.9442,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "آتش",
+      "units": 3101893979,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:51.805841+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 170.0,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "قیراط": {
+    "ins_code": "6237807001018762",
+    "holdings": {
+      "symbol": "قیراط",
+      "ins_code": "6237807001018762",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:17.561434+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "کالایی درفش دماوند",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=Myyl5kFWHygNNxsbXck5PQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=VJsfKvc2xmU0QQQaQQQ2ofQ8u1QQQaQQQQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: قیراط_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 1225500.0,
+          "weight_pct": 97.041,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 1.6045,
+          "raw_label_fa": "سپرده کوتاه مدت بانک پاسارگاد جهان کودک"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "derivatives",
+          "quantity": 49665.0,
+          "weight_pct": 2.9037,
+          "raw_label_fa": "اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C1800 18000000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C2000 20000000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C2200 22000000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C2400 24000000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBBA05C1800 18000000-1405/11/27"
+        }
+      ],
+      "weight_sum_pct": 101.5492,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "قیراط",
+      "units": 878000000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:52.825107+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 169.4,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "زرگر": {
+    "ins_code": "16817885126368964",
+    "holdings": {
+      "symbol": "زرگر",
+      "ins_code": "16817885126368964",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:25.654513+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "چند کالایی کارآمد",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=PK2gKSN08Xc28BfjvwCsjg%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=aCaTLEASaCrJXDRimRWg9w%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای دوره یک ماهه منتهی به 31 خرداد  ماه 1405؛ فایل خام: زرگر_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 1830543.0,
+          "weight_pct": 99.3252,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 140.0,
+          "weight_pct": 0.5788,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 1.1162,
+          "raw_label_fa": "سپرده بانکی نزد بانک خاورمیانه؛ سپرده بانکی نزد بانک دی"
+        }
+      ],
+      "weight_sum_pct": 101.0202,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "زرگر",
+      "units": 2507708467,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:53.819168+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 169.1,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "زروان": {
+    "ins_code": "28255729477187163",
+    "holdings": {
+      "symbol": "زروان",
+      "ins_code": "28255729477187163",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:31.718980+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "دراوراق بهادار کالایی ویستا",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=lqOOObOOOIyJTMwlEWeW0QgBkGIg%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=NnBYa0Vuycoe2jgXJW32UQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: زروان_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 4228217.0,
+          "weight_pct": 95.1336,
+          "raw_label_fa": "شمش طلا Goldbar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 2828.0,
+          "weight_pct": 4.8513,
+          "raw_label_fa": "سکه طلا GoldCoin"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 1.0526,
+          "raw_label_fa": "سپرده بانک نزد بانک پاسارگاد؛ سپرده بانک نزد بانک خاورمیانه"
+        }
+      ],
+      "weight_sum_pct": 101.0375,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "زروان",
+      "units": 3264197000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:54.839449+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 168.6,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "مثقال": {
+    "ins_code": "32469128621155736",
+    "holdings": {
+      "symbol": "مثقال",
+      "ins_code": "32469128621155736",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:36.946223+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "مبتنی بر کالای آگاه",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=3GmM02smeOORBdcfgWEi4w%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=tblYcCiW1QOOObOOOvsNeTOOObOOOEkoKw%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: ‫برای ماه منتهی به 1405/03/31؛ فایل خام: مثقال_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 14394892.0,
+          "weight_pct": 93.0933,
+          "raw_label_fa": "گواهی شمش طلا"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 11619.0,
+          "weight_pct": 5.7254,
+          "raw_label_fa": "گواهی سکه طلا"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "silver_bar_cert",
+          "quantity": 439111.0,
+          "weight_pct": 0.4931,
+          "raw_label_fa": "گواهی شمش نقره"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "derivatives",
+          "quantity": 71000.0,
+          "weight_pct": 0.0253,
+          "raw_label_fa": "اختیار خرید صندوق طلای لوتوس TLDY05C90 900000.0000-1405/10/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C1600 16000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBBA05C1400 14000000.0000-1405/11/27"
+        }
+      ],
+      "weight_sum_pct": 99.3371,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "مثقال",
+      "units": 2600999999,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:55.853208+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 168.3,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "نفیس": {
+    "ins_code": "4626686276232042",
+    "holdings": {
+      "symbol": "نفیس",
+      "ins_code": "4626686276232042",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:42.872879+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر طلای صبا",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=W03fzQkSyzZkWChOOObOOOeIZmxw%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=5WJQQQaQQQHqHstJcsdn7SOoTOhA%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: ‫برای ماه منتهی به 1405/03/31؛ فایل خام: نفیس_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 2659799.0,
+          "weight_pct": 93.259,
+          "raw_label_fa": "گواهی شمش طلا CD1G0B0001 ***"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 2495.0,
+          "weight_pct": 6.6656,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید**"
+        }
+      ],
+      "weight_sum_pct": 99.9246,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "نفیس",
+      "units": 651744184,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:56.855792+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 167.8,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "امرالد": {
+    "ins_code": "30895446582685604",
+    "holdings": {
+      "symbol": "امرالد",
+      "ins_code": "30895446582685604",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:48.456805+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر طلای کیمیا",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=OvbDVhkhMrp6jSFPB1YCHQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=OOObOOO0ihbLSkj2CBbxwc8u0lsg%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: امرالد_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 2077037.0,
+          "weight_pct": 87.9427,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 3713.0,
+          "weight_pct": 11.9862,
+          "raw_label_fa": "سکه طلا GoldCoin"
+        }
+      ],
+      "weight_sum_pct": 99.9289,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "امرالد",
+      "units": 2652612889,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:57.849831+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 167.5,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "زرفام": {
+    "ins_code": "33144542989832366",
+    "holdings": {
+      "symbol": "زرفام",
+      "ins_code": "33144542989832366",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:54.232296+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر کالای آشنا",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=fyZwJIUKYk3V2qDlbqMJfw%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=oXfWxy64HzIBpQlIgjODjQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: زرفام_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 2832133.0,
+          "weight_pct": 98.0612,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 678.0,
+          "weight_pct": 1.7887,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        }
+      ],
+      "weight_sum_pct": 99.8499,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "زرفام",
+      "units": 517800000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:58.878257+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 166.9,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "درخشان": {
+    "ins_code": "61805666737517582",
+    "holdings": {
+      "symbol": "درخشان",
+      "ins_code": "61805666737517582",
+      "status": "ok",
+      "as_of": "2026-07-22",
+      "age_days": 13,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:39:59.481096+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "چند کالایی آبان",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=akpKMNtg8a446oeeOOObOOOw8OOObOOOGQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=e1SPJzdDvQQQaQQQrZ3gO7N1oR9w%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۴/۳۱؛ شیت: برای ماه منتهی به 1405/04/31؛ فایل خام: درخشان_2026-07-22.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 5040793.0,
+          "weight_pct": 95.4,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "derivatives",
+          "quantity": 122101.0,
+          "weight_pct": 4.41,
+          "raw_label_fa": "اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C1800 18000000.0000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C2000 20000000.0000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C2400 24000000.0000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C1600 16000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C1800 18000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C2000 20000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C2400 24000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C2600 26000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBBA05C1800 18000000.0000-1405/11/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C1600 16000000.0000-1405/08/19"
+        }
+      ],
+      "weight_sum_pct": 99.81,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "درخشان",
+      "units": 3860010541,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:02:59.864058+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 166.4,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "تابش": {
+    "ins_code": "9089296888187061",
+    "holdings": {
+      "symbol": "تابش",
+      "ins_code": "9089296888187061",
+      "status": "unavailable",
+      "as_of": null,
+      "age_days": null,
+      "stale_after_days": 45,
+      "fetched_at": null,
+      "source": null,
+      "quality": null,
+      "issuer_name_fa": "",
+      "codal_letter_url": null,
+      "attachment_url": null,
+      "source_note": null,
+      "legs": [],
+      "weight_sum_pct": null,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "تابش",
+      "units": 2050892250,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:00.892102+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 166.1,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "ریتون": {
+    "ins_code": "14035144070182412",
+    "holdings": {
+      "symbol": "ریتون",
+      "ins_code": "14035144070182412",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:04.705642+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "چند کالایی پاسارگاد",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=w665yQQQaQQQpUpwpUKmDgHhOw3A%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=VaPoA8fB7NP72q9H5LWQQQaQQQJg%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: ریتون_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 3607726.0,
+          "weight_pct": 99.1526,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 395.0,
+          "weight_pct": 0.8272,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        }
+      ],
+      "weight_sum_pct": 99.9798,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "ریتون",
+      "units": 5535590000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:01.880099+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 165.5,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "جواهر": {
+    "ins_code": "38544104313215500",
+    "holdings": {
+      "symbol": "جواهر",
+      "ins_code": "38544104313215500",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:10.352314+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "طلای دنای زاگرس",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=5y1uC1fQQQaQQQDHyGbjurXyqbJQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=aI0s8zQLSj6e0IALkZ8DLQ%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: جواهر_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 6993349.0,
+          "weight_pct": 97.9501,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "other",
+          "quantity": null,
+          "weight_pct": 2.0378,
+          "raw_label_fa": "صادرات؛ پاسارگاد؛ گردشگری"
+        }
+      ],
+      "weight_sum_pct": 99.9879,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "جواهر",
+      "units": 2514097524,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:02.912902+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 165.3,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "زمرد": {
+    "ins_code": "64795751499397128",
+    "holdings": {
+      "symbol": "زمرد",
+      "ins_code": "64795751499397128",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:18.460977+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "کالای زمرد بیدار",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=EfoOOObOOOmI3u5sOUp0PoLX7g5w%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=LBczQADOOObOOOuA5QX5zQTC5UNg%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: زمرد_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 3220130.0,
+          "weight_pct": 96.9516,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 947.0,
+          "weight_pct": 2.1725,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "silver_bar_cert",
+          "quantity": 5000.0,
+          "weight_pct": 0.0261,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش نقره 999.9"
+        }
+      ],
+      "weight_sum_pct": 99.1502,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "زمرد",
+      "units": 3434013918,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:03.902849+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 164.7,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "گنج": {
+    "ins_code": "58514988269776425",
+    "holdings": {
+      "symbol": "گنج",
+      "ins_code": "58514988269776425",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:24.642230+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "سیمای کاردان",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=FfMdd53DQQQaQQQqlAwyMIZaXSJQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=vvawAPm4OueepJ2xY2J5og%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: گنج_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 13197223.0,
+          "weight_pct": 99.633,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 0.3709,
+          "raw_label_fa": "بانک تجارت"
+        }
+      ],
+      "weight_sum_pct": 100.0039,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "گنج",
+      "units": 2022675937,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:04.923426+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 164.4,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "گلدا": {
+    "ins_code": "48968268685622891",
+    "holdings": {
+      "symbol": "گلدا",
+      "ins_code": "48968268685622891",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:30.101624+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر طلای پاداش",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=AAfAOKEE0oBkowqBas1eFg%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=OjStZUP0vZpMxhFfDF2SiA%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: گلدا_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 1345941.0,
+          "weight_pct": 87.5469,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 1894.0,
+          "weight_pct": 9.3761,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": 525000.0,
+          "weight_pct": 1.6299,
+          "raw_label_fa": "صکوک مرابحه بپویا62-3ماهه23%"
+        }
+      ],
+      "weight_sum_pct": 98.5529,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "گلدا",
+      "units": 2388550000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:05.918156+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 163.9,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "میراث": {
+    "ins_code": "53633583359422860",
+    "holdings": {
+      "symbol": "میراث",
+      "ins_code": "53633583359422860",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:36.279177+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر کالای کوروش",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=ePV5nKYnSCWYOAr2z7gIaQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=KlVuOOObOOOMo4gR7L3Tb2tpHaWA%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: میراث_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 588985.0,
+          "weight_pct": 96.1199,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 296.0,
+          "weight_pct": 3.6807,
+          "raw_label_fa": "سکه طلا GoldCoin"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 0.01,
+          "raw_label_fa": "سپرده کوتاه مدت بانک گردشگری کامرانیه"
+        }
+      ],
+      "weight_sum_pct": 99.8106,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "میراث",
+      "units": 1543200000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:07.958125+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 162.6,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "نگین فارس": {
+    "ins_code": "53514992320442853",
+    "holdings": {
+      "symbol": "نگین فارس",
+      "ins_code": "53514992320442853",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:42.256991+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "طلا زردیس خلیج فارس",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=9COOObOOOoiQQQaQQQWyHZFHv0zhxiipuA%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=NOw3IrmXFsxOOObOOOEPVKoCfkqg%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: نگین_فارس_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 551919.0,
+          "weight_pct": 96.5424,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 257.0,
+          "weight_pct": 3.4254,
+          "raw_label_fa": "سکه طلا GoldCoin"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 0.0867,
+          "raw_label_fa": "بانک تجارت؛ بانک خاورمیانه"
+        }
+      ],
+      "weight_sum_pct": 100.0545,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "نگین فارس",
+      "units": 1061220095,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:08.981317+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 162.0,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "همیان": {
+    "ins_code": "50072269736641214",
+    "holdings": {
+      "symbol": "همیان",
+      "ins_code": "50072269736641214",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:47.461586+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "پشتوانه طلای همیان سپهر",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=JIlCUwSzl8TzhGB5tEqDNg%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=OrjtFGfvQq6GKEVfbuLFQQQaQQQA%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: همیان_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 338080.0,
+          "weight_pct": 99.8128,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلا با نماد معاملاتی CD1GOB0001"
+        }
+      ],
+      "weight_sum_pct": 99.8128,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "همیان",
+      "units": 505472000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:09.974025+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 162.1,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "رزگلد": {
+    "ins_code": "17244733069907210",
+    "holdings": {
+      "symbol": "رزگلد",
+      "ins_code": "17244733069907210",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:40:54.405603+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر کالای آرمان آتی",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=A4812qrxyvhwxt2xQJUNuQ%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=sBZjf4WOszZUS4rKWNSQsg%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: برای ماه منتهی به 1405/03/31؛ فایل خام: رزگلد_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 677000.0,
+          "weight_pct": 95.463,
+          "raw_label_fa": "شمش طلا GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 390.0,
+          "weight_pct": 4.1903,
+          "raw_label_fa": "سکه طلا GoldCoin"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "derivatives",
+          "quantity": 700.0,
+          "weight_pct": 0.1841,
+          "raw_label_fa": "اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C2000 20000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C1600 16000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBMO05C1800 18000000.0000-1405/05/27؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C1800 18000000.0000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBAB05C2000 20000000.0000-1405/08/19؛ اختیار خرید گواهی سپرده پیوسته شمش طلای +995 GBBA05C1800 18000000.0000-1405/11/27"
+        }
+      ],
+      "weight_sum_pct": 99.8374,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "رزگلد",
+      "units": 1066000000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:11.000711+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 161.6,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  },
+  "رز ترنج": {
+    "ins_code": "20244389840999638",
+    "holdings": {
+      "symbol": "رز ترنج",
+      "ins_code": "20244389840999638",
+      "status": "ok",
+      "as_of": "2026-06-21",
+      "age_days": 44,
+      "stale_after_days": 45,
+      "fetched_at": "2026-07-27T12:41:02.606430+00:00",
+      "source": "codal_monthly_portfolio",
+      "quality": "official",
+      "issuer_name_fa": "در اوراق بهادار مبتنی بر کالای ترنج",
+      "codal_letter_url": "https://www.codal.ir/Reports/Attachment.aspx?LetterSerial=XIsSMijg6wLy5AfGQQQaQQQ3AF1g%3d%3d",
+      "attachment_url": "https://www.codal.ir/Reports/DownloadFile.aspx?id=iPLSB74YDr2YFYOOObOOOhhIaAzw%3D%3D",
+      "source_note": "از پیوست کدال (issuer_map); عنوان: صورت وضعیت پورتفوی صندوق سرمایه گذاری دوره ۱ ماهه منتهی به  ۱۴۰۵/۰۳/۳۱؛ شیت: ‫برای ماه منتهی به 1405/03/31؛ فایل خام: رز_ترنج_2026-06-21.xlsx",
+      "legs": [
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_bar_cert",
+          "quantity": 3011054.0,
+          "weight_pct": 88.2963,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش طلای +995 - GoldBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "gold_coin_cert",
+          "quantity": 4241.0,
+          "weight_pct": 9.4759,
+          "raw_label_fa": "گواهی سپرده پیوسته تمام سکه بهار آزادی طرح جدید-GoldCoin"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "silver_bar_cert",
+          "quantity": 46054.0,
+          "weight_pct": 0.2345,
+          "raw_label_fa": "گواهی سپرده پیوسته شمش نقره 999.9-SilverBar"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "cash_or_fixed_income",
+          "quantity": null,
+          "weight_pct": 0.0362,
+          "raw_label_fa": "سپرده بانکی نزد بانک خاورمیانه"
+        },
+        {
+          "unit": "pct_nav",
+          "leg_type": "other",
+          "quantity": 24999.0,
+          "weight_pct": 2.0973,
+          "raw_label_fa": "GBAB05C2800؛ GBMO05C1600؛ GBAB05C1800؛ GBMO05C1800؛ DGME05C23؛ DGME05C32؛ GBMO05C2200؛ GBAB05C2600؛ GBMO05C2000؛ GBMO05C2400"
+        }
+      ],
+      "weight_sum_pct": 100.1402,
+      "is_pilot": false
+    },
+    "issued_units": {
+      "symbol": "رز ترنج",
+      "units": 4583400000,
+      "units_deven": "20260803",
+      "as_of": "2026-08-04T13:03:11.995204+00:00",
+      "nav_date": "2026-08-03",
+      "status": "ok",
+      "age_seconds": 161.0,
+      "source": "tsetmc",
+      "grain": "near_daily",
+      "note": "etfIssuedUnit / etfUnitDeven — not Codal legs[].quantity; not tick-live"
+    }
+  }
+}
