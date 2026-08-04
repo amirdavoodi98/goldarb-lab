@@ -1,8 +1,14 @@
 # `fetch_data`
 
-Small, login-aware fetch scripts for pulling live and near-live data from `goldarb.ir`.
+Utilities for fetching live and near-live market data from `goldarb.ir`.
 
-## Setup
+This directory is designed to work with:
+
+- `.env` credentials
+- one shared authenticated client
+- a single-command runner for all fetch flows
+
+## Environment
 
 Create a `.env` file in the project root:
 
@@ -18,8 +24,10 @@ Optional:
 GOLDARB_TOKEN=your_token
 ```
 
-If `GOLDARB_TOKEN` is present, it is used directly.
-Otherwise, the client logs in with `GOLDARB_USERNAME` and `GOLDARB_PASSWORD`.
+Priority:
+
+1. `GOLDARB_TOKEN`
+2. `GOLDARB_USERNAME` + `GOLDARB_PASSWORD`
 
 ## Install
 
@@ -29,38 +37,38 @@ Use the project virtualenv:
 ./venv/bin/pip install -r requirements.txt
 ```
 
-## Run all fetches
+## Run everything
 
 ```bash
 ./venv/bin/python -m fetch_data.run_all
 ```
 
-This logs in once and prints each result in sequence.
+This logs in once, calls every fetch helper, and prints the returned objects.
 
-## Scripts
+## Individual scripts
 
-Each script prints the raw Python object returned by the SDK.
+Each script prints the raw object returned by the SDK.
 
-| Script | What it fetches | What it returns |
+| Script | Returns | Meaning |
 |---|---|---|
-| `fetch_fund_holding.py` | Latest fund portfolio composition | `dict` from `client.fund.holdings(symbol)` |
-| `fetch_fund_issue_unit.py` | Fund issued/outstanding units | `dict` from `client.fund.issued_units(symbol)` |
-| `fetch_usdt_live.py` | USDT/IRT live tip | `dict` from `client.market.usdt_live()` |
-| `fetch_gold_coin_live.py` | IME CDC GoldCoin live data | `dict` from `client.market.ime_cdc_live("GoldCoin")` |
-| `fetch_goldbar_live.py` | IME CDC GoldBar live data | `dict` from `client.market.ime_cdc_live("GoldBar")` |
-| `fetch_xau_xag_live.py` | XAU/XAG spot live snapshot | `dict` from `client.market.spot_live()` |
+| `fetch_fund_holding.py` | `dict` | Latest fund portfolio composition / asset mix |
+| `fetch_fund_issue_unit.py` | `dict` | Fund-level issued units, near-daily as-of |
+| `fetch_usdt_live.py` | `dict` | Live USDT/IRT tip, unit is toman |
+| `fetch_gold_coin_live.py` | `dict` | Live GoldCoin IME CDC snapshot |
+| `fetch_goldbar_live.py` | `dict` | Live GoldBar IME CDC snapshot |
+| `fetch_xau_xag_live.py` | `dict` | Live XAU/XAG spot snapshot |
 
-## Notes on the returned data
+## What each script returns
 
 - `fetch_fund_holding.py`
-  - Returns the latest composition of a fund.
-  - The exact keys depend on the backend payload.
-  - Use this for asset weights / portfolio breakdown.
+  - Returns the latest holdings/composition for one fund.
+  - The exact keys come from the backend payload.
+  - Use this for portfolio weights and asset breakdown.
 
 - `fetch_fund_issue_unit.py`
-  - Returns fund-level issued units.
+  - Returns fund-issued / outstanding unit information.
   - This is **not** a specific investor position.
-  - It is near-daily/as-of data, not tick-by-tick data.
+  - It is near-daily/as-of data, not tick-live data.
 
 - `fetch_usdt_live.py`
   - Returns the live USDT/IRT tip.
@@ -77,7 +85,7 @@ Each script prints the raw Python object returned by the SDK.
 
 ## Shared client
 
-All scripts use the shared client in `goldarb_client.py`.
+All scripts use the shared client in [`goldarb_client.py`](../goldarb_client.py).
 
 That client:
 
@@ -86,10 +94,10 @@ That client:
 - logs in once per process
 - reuses the same authenticated session
 
-## Runner behavior
+## Runner notes
 
 `run_all.py` uses one client instance and calls all fetch helpers directly.
-That avoids repeated login requests and reduces the chance of `429 Too Many Requests`.
 
-If the remote service is unreachable or rate-limits the login endpoint, the runner stops and prints the failing step.
+That avoids repeated login requests and helps reduce the chance of `429 Too Many Requests`.
 
+If the remote service is unreachable or rate-limits authentication, the runner stops and prints the failing step.
