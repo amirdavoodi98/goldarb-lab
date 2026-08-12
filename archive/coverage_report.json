@@ -1,0 +1,194 @@
+{
+  "generated_at": "2026-08-11T15:24:24.518977+00:00",
+  "items": [
+    {
+      "name": "fund_bars_1m:عیار",
+      "requested_from": "2026-07-12",
+      "requested_to": "2026-08-11",
+      "returned_rows": 0,
+      "unique_days": 21,
+      "missing_days": 10,
+      "notes": [
+        "missing_days=['2026-07-16', '2026-07-17', '2026-07-18', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07', '2026-08-11']"
+      ]
+    },
+    {
+      "name": "fund_bars_1m:طلا",
+      "requested_from": "2026-07-12",
+      "requested_to": "2026-08-11",
+      "returned_rows": 300,
+      "unique_days": 22,
+      "missing_days": 9,
+      "notes": [
+        "missing_days=['2026-07-16', '2026-07-17', '2026-07-18', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07']"
+      ]
+    },
+    {
+      "name": "fund_bars_1m:کهربا",
+      "requested_from": "2026-07-12",
+      "requested_to": "2026-08-11",
+      "returned_rows": 300,
+      "unique_days": 21,
+      "missing_days": 10,
+      "notes": [
+        "missing_days=['2026-07-16', '2026-07-17', '2026-07-18', '2026-07-23', '2026-07-24', '2026-07-27', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07']"
+      ]
+    },
+    {
+      "name": "fund_bars_1m:مثقال",
+      "requested_from": "2026-07-12",
+      "requested_to": "2026-08-11",
+      "returned_rows": 300,
+      "unique_days": 22,
+      "missing_days": 9,
+      "notes": [
+        "missing_days=['2026-07-16', '2026-07-17', '2026-07-18', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07']"
+      ]
+    },
+    {
+      "name": "fund_bars_1m:آتش",
+      "requested_from": "2026-07-12",
+      "requested_to": "2026-08-11",
+      "returned_rows": 0,
+      "unique_days": 21,
+      "missing_days": 10,
+      "notes": [
+        "missing_days=['2026-07-16', '2026-07-17', '2026-07-18', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07', '2026-08-11']"
+      ]
+    },
+    {
+      "name": "holdings:عیار",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:عیار",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "holdings:طلا",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:طلا",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "holdings:کهربا",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:کهربا",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "holdings:مثقال",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:مثقال",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "holdings:آتش",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:آتش",
+      "requested_from": "2026-08-11T15:24:21.495155+00:00",
+      "requested_to": "2026-08-11T15:24:21.495155+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "notes": []
+    },
+    {
+      "name": "ime_cdc_daily:GoldBar",
+      "requested_from": "2026-07-12",
+      "requested_to": "2026-08-11",
+      "returned_rows": 1,
+      "unique_days": 27,
+      "missing_days": 4,
+      "notes": [
+        "missing_days=['2026-07-17', '2026-07-24', '2026-07-31', '2026-08-07']"
+      ]
+    },
+    {
+      "name": "ime_cdc_daily:GoldCoin",
+      "requested_from": "2026-07-12",
+      "requested_to": "2026-08-11",
+      "returned_rows": 1,
+      "unique_days": 27,
+      "missing_days": 4,
+      "notes": [
+        "missing_days=['2026-07-17', '2026-07-24', '2026-07-31', '2026-08-07']"
+      ]
+    },
+    {
+      "name": "ime_cdc_daily:SilverBar",
+      "requested_from": "2026-07-12",
+      "requested_to": "2026-08-11",
+      "returned_rows": 1,
+      "unique_days": 27,
+      "missing_days": 4,
+      "notes": [
+        "missing_days=['2026-07-17', '2026-07-24', '2026-07-31', '2026-08-07']"
+      ]
+    }
+  ],
+  "totals": {
+    "items": 18,
+    "rows": 913,
+    "missing_days": 60
+  },
+  "missing_by_kind": {
+    "fund_bars_1m": 48,
+    "holdings": 0,
+    "issued_units": 0,
+    "ime_cdc_daily": 12
+  }
+}

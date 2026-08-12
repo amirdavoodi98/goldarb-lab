@@ -45,6 +45,17 @@ Use the project virtualenv:
 
 This logs in once, calls every fetch helper, and prints the returned objects.
 
+It includes:
+
+- XAU/XAG live snapshot
+- USDT live tip
+- GoldCoin live snapshot
+- GoldBar live snapshot
+- one fund's holdings and issued units
+- all-funds portfolio snapshots
+- all-funds holdings
+- all-funds NAV live data
+
 ## Individual scripts
 
 Each script prints the raw object returned by the SDK.
@@ -57,6 +68,7 @@ Each script prints the raw object returned by the SDK.
 | `fetch_gold_coin_live.py` | `dict` | Live GoldCoin IME CDC snapshot |
 | `fetch_goldbar_live.py` | `dict` | Live GoldBar IME CDC snapshot |
 | `fetch_xau_xag_live.py` | `dict` | Live XAU/XAG spot snapshot |
+| `fetch_all_funds_portfolio.py` | `dict` | Portfolio composition and issued units for every fund in `GOLD_FUNDS` |
 
 ## What each script returns
 
@@ -83,6 +95,12 @@ Each script prints the raw object returned by the SDK.
 - `fetch_xau_xag_live.py`
   - Returns the live XAU/XAG spot snapshot.
 
+- `fetch_all_funds_portfolio.py`
+  - Returns a `dict` with two keys:
+    - `results`: per-fund holdings and issued units
+    - `errors`: any funds that failed to fetch
+  - Also writes `all_funds_portfolio.json` with the successful results.
+
 ## Shared client
 
 All scripts use the shared client in [`goldarb_client.py`](../goldarb_client.py).
@@ -99,5 +117,7 @@ That client:
 `run_all.py` uses one client instance and calls all fetch helpers directly.
 
 That avoids repeated login requests and helps reduce the chance of `429 Too Many Requests`.
+
+`run_all.py` also calls the all-funds portfolio flow, so it covers both the single-fund and multi-fund portfolio views in one run.
 
 If the remote service is unreachable or rate-limits authentication, the runner stops and prints the failing step.
