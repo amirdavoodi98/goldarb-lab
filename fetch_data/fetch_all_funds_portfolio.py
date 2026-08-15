@@ -17,12 +17,17 @@ import pprint
 import sys
 
 from fetch_data.gold_funds import GOLD_FUNDS
-from goldarb_client import close_client, get_client
-from goldarb_data_bundle import get_fund_holdings, get_fund_issued_units
+try:
+    from .goldarb_client import close_client, get_client
+    from .goldarb_data_bundle import get_fund_holdings, get_fund_issued_units
+except ImportError:
+    from goldarb_client import close_client, get_client
+    from goldarb_data_bundle import get_fund_holdings, get_fund_issued_units
 
 
-def fetch_all_portfolios() -> dict:
-    client = get_client()
+def fetch_all_portfolios(client=None) -> dict:
+    if client is None:
+        client = get_client()
     results: dict = {}
     errors: dict = {}
 

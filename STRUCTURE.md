@@ -1,0 +1,90 @@
+# goldarb-lab
+
+## Root
+- `README.md`
+- `STRUCTURE.md`
+- `CONTRIBUTING.md`
+- `LICENSE`
+- `pyproject.toml`
+- `requirements.txt`
+- `goldarb_client.py`
+- `goldarb_data_bundle.py`
+- `goldarb_lab.py`
+- `test_sdk.py`
+- `all_funds_portfolio.json`
+- `ime_cdc_history.csv`
+- `ime_cdc_history.jsonl`
+
+## Package
+- `src/goldarb/__init__.py`
+- `src/goldarb/_http.py`
+- `src/goldarb/_util.py`
+- `src/goldarb/client.py`
+- `src/goldarb/fund.py`
+- `src/goldarb/market.py`
+- `src/goldarb/premium_threshold.py`
+
+## fetch_data
+- `fetch_data/README.md`
+- `fetch_data/__init__.py`
+- `fetch_data/check_session_start_gap.py`
+- `fetch_data/daily_archive.py`
+- `fetch_data/fetch_all_funds_portfolio.py`
+- `fetch_data/fetch_fund_holding.py`
+- `fetch_data/fetch_fund_issue_unit.py`
+- `fetch_data/fetch_gold_coin_live.py`
+- `fetch_data/fetch_goldbar_live.py`
+- `fetch_data/fetch_ime_cdc_history.py`
+- `fetch_data/fetch_usdt_live.py`
+- `fetch_data/fetch_xau_xag_live.py`
+- `fetch_data/gold_funds.py`
+- `fetch_data/goldarb_client.py`
+- `fetch_data/goldarb_data_bundle.py`
+- `fetch_data/inspect_ime_cdc_stats.py`
+- `fetch_data/merge_fund_datasets.py`
+- `fetch_data/minute_bar_archive.py`
+- `fetch_data/run_all.py`
+
+## Examples
+- `examples/backtest_premium_threshold.py`
+- `examples/fetch_issued_units.py`
+- `examples/fetch_tala_1m.py`
+- `examples/fetch_usdt.py`
+- `examples/fetch_xau.py`
+- `examples/strategy_data_bundle.py`
+
+## Tests
+- `tests/test_chunking.py`
+- `tests/test_http_mock.py`
+- `tests/test_ime_cdc.py`
+- `tests/test_premium_threshold.py`
+- `tests/test_usdt_units.py`
+
+## Data / Archives
+- `archive/fund_bars_1m/آتش.jsonl`
+- `archive/fund_bars_1m/طلا.jsonl`
+- `archive/fund_bars_1m/عیار.jsonl`
+- `archive/fund_bars_1m/مثقال.jsonl`
+- `archive/fund_bars_1m/کهربا.jsonl`
+- `archive/holdings_history.jsonl`
+- `archive/issued_units_history.jsonl`
+- `data/composition_آتش.csv`
+- `data/composition_طلا.csv`
+- `data/composition_عیار.csv`
+- `data/composition_مثقال.csv`
+- `data/composition_کهربا.csv`
+- `data/nav_history_آتش.csv`
+- `data/nav_history_طلا.csv`
+- `data/nav_history_عیار.csv`
+- `data/nav_history_مثقال.csv`
+- `data/nav_history_کهربا.csv`
+- `data/silver_daily_history.csv`
+- `data/usdttmn_1m_3y_final.csv`
+
+## Output / Processed
+- `merged_output/آتش_merged.csv`
+- `merged_output/طلا_merged.csv`
+- `merged_output/عیار_merged.csv`
+- `merged_output/مثقال_merged.csv`
+- `merged_output/کهربا_merged.csv`
+
