@@ -1,0 +1,3 @@
+Saved coverage report to archive/coverage_report.json
+Collected 10 new rows across 18 collection items
+Missing-day count by kind: {'fund_bars_1m': 20, 'holdings': 0, 'issued_units': 0, 'ime_cdc_daily': 12}

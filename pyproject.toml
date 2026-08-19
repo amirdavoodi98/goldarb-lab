@@ -5,13 +5,14 @@ build-backend = "hatchling.build"
 [project]
 name = "goldarb-lab"
 version = "0.6.0"
-description = "Python client for Gold Arbitrage strategy lab (fund/XAU/USDT bars + live tips)."
+description = "Python client for Gold Arbitrage strategy lab (fund/XAU/USDT/IME bars + live tips)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Gold Arbitrage" }]
 dependencies = [
   "httpx>=0.27",
+  "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

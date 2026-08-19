@@ -1,0 +1,270 @@
+{
+  "generated_at": "2026-08-13T12:05:36.931666+00:00",
+  "items": [
+    {
+      "name": "fund_bars_1m:عیار",
+      "requested_from": "2026-07-14",
+      "requested_to": "2026-08-13",
+      "returned_rows": 0,
+      "unique_days": 20,
+      "missing_days": 11,
+      "missing_days_no_trade": 8,
+      "missing_days_in_progress": 1,
+      "missing_days_unexplained": 2,
+      "notes": [
+        "UNEXPLAINED (real trading days, not today): ['2026-07-18', '2026-08-11']",
+        "no_trade (weekend/holiday): ['2026-07-16', '2026-07-17', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07']",
+        "in_progress (today, session not closed): ['2026-08-13']"
+      ]
+    },
+    {
+      "name": "fund_bars_1m:طلا",
+      "requested_from": "2026-07-14",
+      "requested_to": "2026-08-13",
+      "returned_rows": 0,
+      "unique_days": 20,
+      "missing_days": 11,
+      "missing_days_no_trade": 8,
+      "missing_days_in_progress": 1,
+      "missing_days_unexplained": 2,
+      "notes": [
+        "UNEXPLAINED (real trading days, not today): ['2026-07-18', '2026-08-12']",
+        "no_trade (weekend/holiday): ['2026-07-16', '2026-07-17', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07']",
+        "in_progress (today, session not closed): ['2026-08-13']"
+      ]
+    },
+    {
+      "name": "fund_bars_1m:کهربا",
+      "requested_from": "2026-07-14",
+      "requested_to": "2026-08-13",
+      "returned_rows": 0,
+      "unique_days": 20,
+      "missing_days": 11,
+      "missing_days_no_trade": 8,
+      "missing_days_in_progress": 1,
+      "missing_days_unexplained": 2,
+      "notes": [
+        "UNEXPLAINED (real trading days, not today): ['2026-07-18', '2026-07-27']",
+        "no_trade (weekend/holiday): ['2026-07-16', '2026-07-17', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07']",
+        "in_progress (today, session not closed): ['2026-08-13']"
+      ]
+    },
+    {
+      "name": "fund_bars_1m:مثقال",
+      "requested_from": "2026-07-14",
+      "requested_to": "2026-08-13",
+      "returned_rows": 0,
+      "unique_days": 21,
+      "missing_days": 10,
+      "missing_days_no_trade": 8,
+      "missing_days_in_progress": 1,
+      "missing_days_unexplained": 1,
+      "notes": [
+        "UNEXPLAINED (real trading days, not today): ['2026-07-18']",
+        "no_trade (weekend/holiday): ['2026-07-16', '2026-07-17', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07']",
+        "in_progress (today, session not closed): ['2026-08-13']"
+      ]
+    },
+    {
+      "name": "fund_bars_1m:آتش",
+      "requested_from": "2026-07-14",
+      "requested_to": "2026-08-13",
+      "returned_rows": 0,
+      "unique_days": 20,
+      "missing_days": 11,
+      "missing_days_no_trade": 8,
+      "missing_days_in_progress": 1,
+      "missing_days_unexplained": 2,
+      "notes": [
+        "UNEXPLAINED (real trading days, not today): ['2026-07-18', '2026-08-11']",
+        "no_trade (weekend/holiday): ['2026-07-16', '2026-07-17', '2026-07-23', '2026-07-24', '2026-07-30', '2026-07-31', '2026-08-06', '2026-08-07']",
+        "in_progress (today, session not closed): ['2026-08-13']"
+      ]
+    },
+    {
+      "name": "holdings:عیار",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:عیار",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "holdings:طلا",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:طلا",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "holdings:کهربا",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:کهربا",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "holdings:مثقال",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:مثقال",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "holdings:آتش",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "issued_units:آتش",
+      "requested_from": "2026-08-13T12:05:35.781046+00:00",
+      "requested_to": "2026-08-13T12:05:35.781046+00:00",
+      "returned_rows": 1,
+      "unique_days": 1,
+      "missing_days": 0,
+      "missing_days_no_trade": 0,
+      "missing_days_in_progress": 0,
+      "missing_days_unexplained": 0,
+      "notes": []
+    },
+    {
+      "name": "ime_cdc_daily:GoldBar",
+      "requested_from": "2026-07-14",
+      "requested_to": "2026-08-13",
+      "returned_rows": 0,
+      "unique_days": 26,
+      "missing_days": 5,
+      "missing_days_no_trade": 4,
+      "missing_days_in_progress": 1,
+      "missing_days_unexplained": 0,
+      "notes": [
+        "no_trade (weekend/holiday): ['2026-07-17', '2026-07-24', '2026-07-31', '2026-08-07']",
+        "in_progress (today, session not closed): ['2026-08-13']"
+      ]
+    },
+    {
+      "name": "ime_cdc_daily:GoldCoin",
+      "requested_from": "2026-07-14",
+      "requested_to": "2026-08-13",
+      "returned_rows": 0,
+      "unique_days": 26,
+      "missing_days": 5,
+      "missing_days_no_trade": 4,
+      "missing_days_in_progress": 1,
+      "missing_days_unexplained": 0,
+      "notes": [
+        "no_trade (weekend/holiday): ['2026-07-17', '2026-07-24', '2026-07-31', '2026-08-07']",
+        "in_progress (today, session not closed): ['2026-08-13']"
+      ]
+    },
+    {
+      "name": "ime_cdc_daily:SilverBar",
+      "requested_from": "2026-07-14",
+      "requested_to": "2026-08-13",
+      "returned_rows": 1,
+      "unique_days": 26,
+      "missing_days": 5,
+      "missing_days_no_trade": 4,
+      "missing_days_in_progress": 1,
+      "missing_days_unexplained": 0,
+      "notes": [
+        "no_trade (weekend/holiday): ['2026-07-17', '2026-07-24', '2026-07-31', '2026-08-07']",
+        "in_progress (today, session not closed): ['2026-08-13']"
+      ]
+    }
+  ],
+  "totals": {
+    "items": 18,
+    "rows": 11,
+    "missing_days": 69,
+    "missing_days_no_trade": 52,
+    "missing_days_in_progress": 8,
+    "missing_days_unexplained": 9
+  },
+  "missing_by_kind": {
+    "fund_bars_1m": 54,
+    "holdings": 0,
+    "issued_units": 0,
+    "ime_cdc_daily": 15
+  },
+  "unexplained_by_kind": {
+    "fund_bars_1m": 9,
+    "holdings": 0,
+    "issued_units": 0,
+    "ime_cdc_daily": 0
+  }
+}
