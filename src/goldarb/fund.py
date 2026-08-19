@@ -11,9 +11,16 @@ from ._util import rows_to_df, sort_by_key
 if TYPE_CHECKING:
     from ._http import LabHttp
 
-# Must match backend funds.lab_bars.FUND_BARS_1M_MAX_DAYS / DAILY
+# Inclusive span = (date_to - date_from).days — match funds.lab_bars.FUND_BARS_MAX_DAYS
+# 1s: one calendar day per HTTP call. 1m: 7d. daily: 366d.
+_1S_MAX_SPAN = 0
 _1M_MAX_SPAN = 7
 _DAILY_MAX_SPAN = 366
+_GRAIN_MAX_SPAN = {
+    "1s": _1S_MAX_SPAN,
+    "1m": _1M_MAX_SPAN,
+    "daily": _DAILY_MAX_SPAN,
+}
 
 
 class FundAPI:
@@ -31,15 +38,16 @@ class FundAPI:
         grain: str = "1m",
     ) -> list[dict[str, Any]]:
         """
-        Fetch fund bars. ``grain`` is ``1m`` or ``daily``.
+        Fetch fund bars. ``grain`` is ``1s``, ``1m``, or ``daily``.
 
-        Long ranges are auto-chunked to respect platform limits.
+        ``1s``/``1m`` are sparse OHLCV from trades; ``daily`` uses ``FundPrice``.
+        Long ranges are auto-chunked (``1s`` = one calendar day per request).
         Includes ``close`` / ``premium_discount_pct`` / ``nav_price`` when present.
         """
         grain_key = grain.strip().lower()
-        if grain_key not in {"1m", "daily"}:
-            raise ValueError("grain must be '1m' or 'daily'")
-        max_span = _1M_MAX_SPAN if grain_key == "1m" else _DAILY_MAX_SPAN
+        if grain_key not in _GRAIN_MAX_SPAN:
+            raise ValueError("grain must be '1s', '1m', or 'daily'")
+        max_span = _GRAIN_MAX_SPAN[grain_key]
         path = f"/api/v1/funds/{encode_symbol(symbol)}/bars/"
         bars: list[dict[str, Any]] = []
         for a, b in iter_date_chunks(start, end, max_span_days=max_span):

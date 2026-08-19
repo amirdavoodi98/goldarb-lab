@@ -71,7 +71,7 @@ with LabClient.from_env() as client:
 
 ### Fund data
 
-- `fund.candles(symbol, start, end, grain="1m"|"daily")`
+- `fund.candles(symbol, start, end, grain="1s"|"1m"|"daily")`
 - `fund.candles_many(symbols, start, end, grain="daily")`
 - `fund.flow(symbol, days=...)`
 - `fund.spreads(window=...)`
@@ -100,6 +100,7 @@ with LabClient.from_env() as client:
 
 ## Important limits
 
+- Fund 1s history is one calendar day per request; the SDK auto-chunks longer ranges (sparse OHLCV from trades).
 - Fund 1m history is chunked by the SDK.
 - Fund daily history is chunked by the SDK.
 - XAU/XAG 1m history is chunked by the SDK.
@@ -290,6 +291,7 @@ Collects missing data and writes coverage reports.
 
 ```bash
 python examples/backtest_premium_threshold.py
+python examples/fetch_tala_1s.py
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py
 python examples/fetch_usdt.py

@@ -25,7 +25,13 @@ def iter_date_chunks(
     *,
     max_span_days: int,
 ) -> Iterator[tuple[date, date]]:
-    """Yield inclusive [chunk_start, chunk_end] spans of at most ``max_span_days``."""
+    """
+    Yield inclusive [chunk_start, chunk_end] spans of at most ``max_span_days``.
+
+    ``max_span_days`` is the inclusive difference ``(end - start).days``
+    allowed in one request (platform ``FUND_BARS_MAX_DAYS``). ``0`` means
+    one calendar day per chunk (``1s`` fund bars).
+    """
     a = _parse_day(start)
     b = _parse_day(end)
     if a > b:
