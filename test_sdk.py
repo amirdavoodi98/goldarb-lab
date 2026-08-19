@@ -1,16 +1,17 @@
+from datetime import date, timedelta
 from goldarb import LabClient
 
-client = LabClient.login(
+end = date.today()
+start = end - timedelta(days=3)
+
+with LabClient.login(
     base_url="https://goldarb.ir",
-    username="shahrzad",
-    password="3p41IKv3KwJi",
-)
+    username="amirmd98",
+    password="...", # add your password here
+    timeout=180.0,
+) as c:
+    bars = c.fund.candles("طلا", start=start, end=end, grain="1s")
 
-bars = client.fund.candles(
-    symbol="طلا",
-    start="2026-07-01",
-    end="2026-07-03",
-    grain="1m",
-)
-
-print(bars)
+print(len(bars))
+print(bars[0] if bars else "empty")
+print(bars[-1] if bars else "")
