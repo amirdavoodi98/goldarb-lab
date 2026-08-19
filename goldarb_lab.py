@@ -155,7 +155,7 @@
 #     client = LabClient.login(
 #         base_url="https://goldarb.ir",
 #         username="shahrzad",
-#         password="3p41IKv3KwJi",
+#         password="...",
 #     )
 
 #     try:
