@@ -71,7 +71,8 @@ python examples/backtest_premium_threshold.py
 from goldarb import LabClient
 
 with LabClient.from_env() as c:
-    bars = c.fund.candles("طلا", start="2026-07-01", end="2026-07-03", grain="1m")
+    bars = c.fund.candles("طلا", start="2026-07-01", end="2026-07-03", grain="1s")
+    minute = c.fund.candles("طلا", start="2026-07-01", end="2026-07-03", grain="1m")
     flow = c.fund.flow("طلا", days=90)
     xau = c.market.xau(start="2026-07-01", end="2026-07-03", grain="1m")
     # USDT/IRR 1m — prices in **toman** (source may be import|nobitex)
@@ -95,6 +96,7 @@ With pandas: `candles_df`, `flow_df`, `xau_df`, `usdt_df`, `gold_daily_df`.
 Examples:
 
 ```bash
+python examples/fetch_tala_1s.py
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py
 python examples/fetch_usdt.py
@@ -103,7 +105,7 @@ python examples/strategy_data_bundle.py
 python examples/backtest_premium_threshold.py
 ```
 
-## API surface (v0.4)
+## API surface (v0.6)
 
 **Strategies:** `run_premium_threshold` (offline Lab `premium_threshold` clone)
 
@@ -119,6 +121,7 @@ python examples/backtest_premium_threshold.py
 
 | Endpoint | Limit per request | SDK behavior |
 |----------|-------------------|--------------|
+| Fund bars `grain=1s` | **one** calendar day | auto-chunks (sparse OHLCV from trades) |
 | Fund bars `grain=1m` | max **7** calendar days | auto-chunks |
 | Fund bars `grain=daily` | max **366** days | auto-chunks |
 | Metal bars (XAU/XAG 1m) | max **31** days | auto-chunks + pagination |

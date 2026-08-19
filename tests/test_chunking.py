@@ -21,3 +21,15 @@ def test_iter_date_chunks_single():
     )
     assert len(chunks) == 1
     assert chunks[0] == (date(2026, 7, 1), date(2026, 7, 3))
+
+
+def test_iter_date_chunks_one_day_span():
+    chunks = list(
+        iter_date_chunks(date(2026, 8, 16), date(2026, 8, 19), max_span_days=0)
+    )
+    assert chunks == [
+        (date(2026, 8, 16), date(2026, 8, 16)),
+        (date(2026, 8, 17), date(2026, 8, 17)),
+        (date(2026, 8, 18), date(2026, 8, 18)),
+        (date(2026, 8, 19), date(2026, 8, 19)),
+    ]

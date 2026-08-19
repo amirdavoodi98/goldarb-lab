@@ -39,6 +39,42 @@ def test_fund_candles_chunks_http():
 
 
 @respx.mock
+def test_fund_candles_1s_chunks_one_day_each():
+    route = respx.get("https://example.test/api/v1/funds/%D8%B7%D9%84%D8%A7/bars/").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "bars": [
+                    {
+                        "bar_at": "2026-08-16T10:00:01",
+                        "open": 1,
+                        "high": 2,
+                        "low": 1,
+                        "close": 2,
+                        "volume": 10,
+                    }
+                ]
+            },
+        )
+    )
+    with LabClient(base_url="https://example.test", token="test-token") as client:
+        bars = client.fund.candles(
+            "طلا",
+            start="2026-08-16",
+            end="2026-08-19",
+            grain="1s",
+        )
+    assert len(bars) == 4
+    assert route.call_count == 4
+    params = [tuple(sorted(c.request.url.params.multi_items())) for c in route.calls]
+    assert ("grain", "1s") in params[0]
+    assert ("date_from", "2026-08-16") in params[0]
+    assert ("date_to", "2026-08-16") in params[0]
+    assert ("date_from", "2026-08-19") in params[-1]
+    assert ("date_to", "2026-08-19") in params[-1]
+
+
+@respx.mock
 def test_xau_metal_bars_paginated_aliases_ohlc():
     respx.get("https://example.test/api/v1/market/metals/bars/").mock(
         side_effect=[
