@@ -18,7 +18,6 @@ from goldarb.signals.pair_spread import (
 )
 from goldarb.simulation.models import Side, decimal_value
 from goldarb.strategies.pairs import (
-    append_premiums,
     flatten_positions,
     open_pair,
     pair_event,
@@ -46,11 +45,11 @@ class PairZScoreStrategy(Strategy):
         self.capital_per_side = decimal_value(capital_per_side)
         self.fund_a = str(fund_a)
         self.fund_b = str(fund_b)
-        self.window_days = int(window_days)
+        self.window_days = int(window_days)  # last N overlapping snapshots
         self.min_samples = int(min_samples)
         self.z_threshold = float(z_threshold)
         self._current_pair: tuple[str, str] | None = None
-        self._premiums: dict[str, list[float]] = {}
+        self._spreads: list[float] = []
         self.events: list[dict[str, Any]] = []
         self.last_status: str | None = None
         self.last_stats: dict[str, Any] | None = None
@@ -59,7 +58,10 @@ class PairZScoreStrategy(Strategy):
         snapshot = ctx.market
         if snapshot is None:
             return
-        append_premiums(self._premiums, snapshot)
+        prem_a = snapshot_premium(snapshot, self.fund_a)
+        prem_b = snapshot_premium(snapshot, self.fund_b)
+        if prem_a is not None and prem_b is not None:
+            self._spreads.append(round(float(prem_a) - float(prem_b), 6))
         series = self._spread_series()
         long_px = snapshot_close(snapshot, self.fund_a)
         short_px = snapshot_close(snapshot, self.fund_b)
@@ -126,12 +128,7 @@ class PairZScoreStrategy(Strategy):
             self._current_pair = None
 
     def _spread_series(self) -> list[float]:
-        hist_a = self._premiums.get(self.fund_a, [])
-        hist_b = self._premiums.get(self.fund_b, [])
-        n = min(len(hist_a), len(hist_b))
-        series: list[float] = []
-        for index in range(n):
-            series.append(round(float(hist_a[index]) - float(hist_b[index]), 6))
+        series = self._spreads
         if self.window_days > 0 and len(series) > self.window_days:
             return series[-self.window_days :]
         return series

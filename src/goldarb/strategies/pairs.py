@@ -3,15 +3,28 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import Any
+from uuid import uuid4
 
 from goldarb.data import snapshot_close
 from goldarb.signals.stats import premium_from_row, to_float
-from goldarb.simulation.models import MarketSnapshot, Quote, Side, decimal_value
+from goldarb.simulation.engine import QUANTITY_QUANTUM
+from goldarb.simulation.models import (
+    MarketSnapshot,
+    OrderStatus,
+    Quote,
+    Side,
+    decimal_value,
+)
 from goldarb.strategy import StrategyContext
 
 ZERO = Decimal(0)
+
+
+def _order_quantity(value: Decimal) -> Decimal:
+    qty = value.quantize(QUANTITY_QUANTUM, rounding=ROUND_DOWN)
+    return qty if qty > ZERO else ZERO
 
 
 def quote_premium(quote: Quote) -> float | None:
@@ -33,15 +46,23 @@ def snapshot_premium(snapshot: MarketSnapshot, symbol: str) -> float | None:
     return None
 
 
-def append_premiums(
-    history: dict[str, list[float]],
-    snapshot: MarketSnapshot,
-) -> None:
+def premiums_on_snapshot(snapshot: MarketSnapshot) -> dict[str, float]:
+    """Premiums for symbols actually quoted on this snapshot."""
+    values: dict[str, float] = {}
     for quote in snapshot.quotes:
         premium = quote_premium(quote)
         if premium is None:
             continue
-        history.setdefault(quote.symbol, []).append(premium)
+        values[quote.symbol] = premium
+    return values
+
+
+def append_premiums(
+    history: dict[str, list[float]],
+    snapshot: MarketSnapshot,
+) -> None:
+    for symbol, premium in premiums_on_snapshot(snapshot).items():
+        history.setdefault(symbol, []).append(premium)
 
 
 def flatten_positions(ctx: StrategyContext, *, prefix: str) -> None:
@@ -52,11 +73,12 @@ def flatten_positions(ctx: StrategyContext, *, prefix: str) -> None:
         if quantity == ZERO:
             continue
         side = Side.SELL if quantity > ZERO else Side.BUY
+        # Unique id: the same event may flatten twice (exit then failed re-entry).
         ctx.submit_order(
             symbol=position.symbol,
             side=side,
             quantity=abs(quantity),
-            client_order_id=f"{prefix}:flatten:{event_id}:{position.symbol}",
+            client_order_id=f"{prefix}:flatten:{event_id}:{position.symbol}:{uuid4().hex[:8]}",
         )
 
 
@@ -76,20 +98,30 @@ def open_pair(
     if long_px is None or short_px is None or long_px <= ZERO or short_px <= ZERO:
         return False
     capital = decimal_value(capital_per_side)
+    short_qty = _order_quantity(capital / short_px)
+    long_qty = _order_quantity(capital / long_px)
+    if short_qty <= ZERO or long_qty <= ZERO:
+        return False
     event_id = market.event_id
-    ctx.submit_order(
+    short_order = ctx.submit_order(
         symbol=short_sym,
         side=Side.SELL,
-        quantity=capital / short_px,
+        quantity=short_qty,
         client_order_id=f"{prefix}:short:{event_id}:{short_sym}",
     )
-    ctx.submit_order(
+    long_order = ctx.submit_order(
         symbol=long_sym,
         side=Side.BUY,
-        quantity=capital / long_px,
+        quantity=long_qty,
         client_order_id=f"{prefix}:long:{event_id}:{long_sym}",
     )
-    return True
+    if (
+        short_order.status == OrderStatus.FILLED
+        and long_order.status == OrderStatus.FILLED
+    ):
+        return True
+    flatten_positions(ctx, prefix=prefix)
+    return False
 
 
 def pair_event(

@@ -21,6 +21,7 @@ from goldarb.strategies.pairs import (
     flatten_positions,
     open_pair,
     pair_event,
+    premiums_on_snapshot,
 )
 from goldarb.strategy import Strategy, StrategyContext
 
@@ -40,7 +41,7 @@ class BubbleRankStrategy(Strategy):
         min_gap: float = BUBBLE_RANK_MIN_GAP,
     ) -> None:
         self.capital_per_side = decimal_value(capital_per_side)
-        self.window_days = int(window_days)
+        self.window_days = int(window_days)  # last N premium observations
         self.min_samples = int(min_samples)
         self.min_gap = float(min_gap)
         self._current_pair: tuple[str, str] | None = None
@@ -53,8 +54,14 @@ class BubbleRankStrategy(Strategy):
         if snapshot is None:
             return
         append_premiums(self._premiums, snapshot)
+        present = premiums_on_snapshot(snapshot)
+        live_history = {
+            symbol: self._premiums[symbol]
+            for symbol in present
+            if symbol in self._premiums
+        }
         ranking = compute_rankings(
-            self._premiums,
+            live_history,
             min_samples=self.min_samples,
             window_days=self.window_days,
             min_gap=self.min_gap,

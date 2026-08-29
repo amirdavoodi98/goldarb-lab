@@ -24,6 +24,10 @@ def compute_pair_spread_stats(
     min_samples: int = PAIR_SPREAD_MIN_SAMPLES,
     z_threshold: float = PAIR_SPREAD_Z_THRESHOLD,
 ) -> dict[str, Any]:
+    """Z-score of overlapping same-snapshot premium spreads.
+
+    ``series`` should already be truncated to the last ``window_days`` observations.
+    """
     n = len(series)
     mean, std = sample_mean_std(series)
     current_spread = series[-1] if series else None

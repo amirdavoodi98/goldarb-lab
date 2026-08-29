@@ -101,3 +101,90 @@ def test_flattens_when_signal_goes_inactive(tmp_path):
     for position in result.portfolio.positions:
         assert position.quantity == 0
     assert result.portfolio.realized_pnl == Decimal("0")
+
+
+def test_does_not_leave_long_only_when_short_disabled(tmp_path):
+    premiums = [(0.0, 0.0)] * 11 + [(-2.5, 2.5)]
+    strategy = BubbleRankStrategy(
+        capital_per_side="100000",
+        min_samples=10,
+        min_gap=1.0,
+    )
+    result = BacktestEngine().run(
+        strategy,
+        HistoricalDataProvider.from_cross_section(_pair_bars(premiums)),
+        RunConfig(
+            strategy_name="bubble_rank",
+            initial_cash="1000000",
+            allow_short=False,
+        ),
+        simulator=LocalSimulator(tmp_path / "noshort.db"),
+        fee=PercentFee("0"),
+    )
+    assert strategy.events == []
+    assert strategy._current_pair is None
+    for position in result.portfolio.positions:
+        assert position.quantity == 0
+
+
+def test_ignores_stale_premium_when_symbol_absent(tmp_path):
+    start = date(2026, 1, 1)
+    bars = []
+    for index in range(12):
+        row = {
+            "طلا": {"close": 20000.0, "premium": 0.0},
+            "زر": {"close": 10000.0, "premium": 0.0},
+        }
+        if index < 11:
+            row["گوهر"] = {"close": 15000.0, "premium": 0.0 if index < 10 else -10.0}
+        bars.append((start + timedelta(days=index), row))
+    strategy = BubbleRankStrategy(
+        capital_per_side="100000",
+        min_samples=10,
+        min_gap=1.0,
+    )
+    result = BacktestEngine().run(
+        strategy,
+        HistoricalDataProvider.from_cross_section(bars),
+        RunConfig(
+            strategy_name="bubble_rank",
+            initial_cash="1000000",
+            allow_short=True,
+        ),
+        simulator=LocalSimulator(tmp_path / "stale.db"),
+        fee=PercentFee("0"),
+    )
+    assert any(
+        item["type"] == "enter_pair" and item["long"] == "گوهر" for item in strategy.events
+    )
+    assert any(item["type"] == "exit_pair" for item in strategy.events)
+    best = (strategy.last_ranking or {}).get("best_pair")
+    assert best is None or best.get("active") is False or best.get("long") != "گوهر"
+    for position in result.portfolio.positions:
+        assert position.quantity == 0
+
+
+def test_rotates_when_cheap_and_rich_swap(tmp_path):
+    premiums = [(0.0, 0.0)] * 11 + [(-3.0, 3.0), (3.0, -3.0)]
+    strategy = BubbleRankStrategy(
+        capital_per_side="100000",
+        min_samples=10,
+        min_gap=1.0,
+    )
+    result = BacktestEngine().run(
+        strategy,
+        HistoricalDataProvider.from_cross_section(_pair_bars(premiums)),
+        RunConfig(
+            strategy_name="bubble_rank",
+            initial_cash="1000000",
+            allow_short=True,
+        ),
+        simulator=LocalSimulator(tmp_path / "swap.db"),
+        fee=PercentFee("0"),
+    )
+    types = [item["type"] for item in strategy.events]
+    assert "enter_pair" in types
+    assert "rebalance_pair" in types
+    held = {item.symbol: item.quantity for item in result.portfolio.positions}
+    assert held["زر"] > 0
+    assert held["طلا"] < 0

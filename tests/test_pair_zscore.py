@@ -110,3 +110,56 @@ def test_opens_when_z_extreme(tmp_path):
     held = {item.symbol: item.quantity for item in result.portfolio.positions}
     assert held["زر"] > 0
     assert held["طلا"] < 0
+
+
+def test_spread_uses_same_snapshot_not_index_zip(tmp_path):
+    start = date(2026, 6, 1)
+    bars = []
+    for index in range(10):
+        bars.append(
+            (
+                start + timedelta(days=index),
+                {
+                    "طلا": {"close": 20000.0, "premium": 0.0},
+                    "زر": {"close": 10000.0, "premium": 0.0},
+                },
+            )
+        )
+    for index in range(10, 20):
+        bars.append(
+            (
+                start + timedelta(days=index),
+                {"طلا": {"close": 20000.0, "premium": 20.0}},
+            )
+        )
+    bars.append(
+        (
+            start + timedelta(days=20),
+            {
+                "طلا": {"close": 20000.0, "premium": 0.0},
+                "زر": {"close": 10000.0, "premium": 0.0},
+            },
+        )
+    )
+    strategy = PairZScoreStrategy(
+        fund_a="طلا",
+        fund_b="زر",
+        window_days=30,
+        min_samples=10,
+        z_threshold=1.5,
+        capital_per_side="100000",
+    )
+    result = BacktestEngine().run(
+        strategy,
+        HistoricalDataProvider.from_cross_section(bars),
+        RunConfig(
+            strategy_name="pair_zscore",
+            initial_cash="1000000",
+            allow_short=True,
+        ),
+        simulator=LocalSimulator(tmp_path / "align.db"),
+        fee=PercentFee("0"),
+    )
+    assert strategy._spread_series() == [0.0] * 11
+    assert strategy.events == []
+    assert result.orders == []
