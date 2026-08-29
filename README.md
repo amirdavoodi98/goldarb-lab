@@ -9,6 +9,7 @@ Use it to:
 - fetch USDT, XAU, and XAG data
 - collect missing history into local archives
 - build analysis-ready merged files
+- simulate MARKET/LIMIT orders locally in SQLite or through the platform API
 
 ## What this repo contains
 
@@ -65,7 +66,66 @@ with LabClient.from_env() as client:
     usdt = client.market.usdt_live()
     xau = client.market.xau(start="2026-07-01", end="2026-07-03", grain="1m")
     ime = client.market.ime_cdc_stats("GoldBar", days=180)
+
+    account = client.simulation.create_account(
+        initial_cash="1000000000",
+        allow_short=True,
+    )
+    order = client.simulation.submit_order(
+        account.id,
+        symbol="طلا",
+        side="BUY",
+        quantity="100",
+    )
 ```
+
+## Paper simulation
+
+Use `client.simulation` when account state and matching must remain on the main
+server. Pending LIMIT orders continue matching on server market updates even
+when the SDK process is offline.
+
+Use `LocalSimulator` for fully offline runs. Your strategy injects timezone-aware
+bid/ask snapshots and the SDK persists accounts, orders, fills, positions, fees,
+P&L, and equity history in SQLite.
+
+```python
+from datetime import UTC, datetime
+from decimal import Decimal
+
+from goldarb.simulation import LocalSimulator, MarketSnapshot, Quote
+
+with LocalSimulator("paper.sqlite3") as simulator:
+    account = simulator.create_account(
+        initial_cash="1000000000",
+        fee_rate="0.0005",
+        allow_short=True,
+    )
+    simulator.feed(
+        MarketSnapshot(
+            event_id="tick-1",
+            timestamp=datetime.now(UTC),
+            quotes=(
+                Quote(
+                    symbol="طلا",
+                    bid=Decimal("249900"),
+                    ask=Decimal("250000"),
+                    bid_size=Decimal("500"),
+                    ask_size=Decimal("600"),
+                ),
+            ),
+        )
+    )
+    simulator.submit_order(
+        account.id,
+        symbol="طلا",
+        side="BUY",
+        quantity="100",
+    )
+    print(simulator.portfolio(account.id))
+```
+
+Full Persian guide: [`docs/local-simulator-fa.md`](docs/local-simulator-fa.md)
 
 ## Main SDK data
 
