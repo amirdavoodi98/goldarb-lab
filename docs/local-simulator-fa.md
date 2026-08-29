@@ -1,5 +1,7 @@
 # راهنمای استفاده از LocalSimulator
 
+برای اجرای یک `Strategy` با `BacktestEngine` / `LiveSimulationEngine` و مسیر ماهانهٔ ۱ ثانیه‌ای، سند استفادهٔ SDK را ببینید: [`sdk-usage-fa.md`](sdk-usage-fa.md).
+
 `LocalSimulator` یک paper broker مستقل از استراتژی است. کد استراتژی، زمان شبیه‌سازی
 و داده بازار را شما تأمین می‌کنید؛ شبیه‌ساز سفارش‌ها، پرشدن، کارمزد، موجودی نقد،
 پوزیشن و سود و زیان را محاسبه و در SQLite ذخیره می‌کند.

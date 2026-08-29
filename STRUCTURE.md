@@ -27,8 +27,13 @@
 - `src/goldarb/data.py`
 - `src/goldarb/execution.py`
 - `src/goldarb/engine.py`
+- `src/goldarb/pipelines.py`
 - `src/goldarb/session.py`
+- `src/goldarb/universe.py`
+- `src/goldarb/signals/`
 - `src/goldarb/strategies/ma_band.py`
+- `src/goldarb/strategies/bubble_rank.py`
+- `src/goldarb/strategies/pair_zscore.py`
 - `src/goldarb/simulation/`
 
 ## fetch_data
@@ -55,6 +60,10 @@
 ## Examples
 - `examples/backtest_premium_threshold.py`
 - `examples/backtest_ma_band.py`
+- `examples/backtest_month_1s.py`
+- `examples/simulate_iran_session_1s.py`
+- `examples/backtest_bubble_rank.py`
+- `examples/backtest_pair_zscore.py`
 - `examples/fetch_issued_units.py`
 - `examples/fetch_tala_1m.py`
 - `examples/fetch_usdt.py`
@@ -73,9 +82,14 @@
 - `tests/test_remote_simulation.py`
 - `tests/test_strategy_engine.py`
 - `tests/test_execution_models.py`
+- `tests/test_bubble_rank.py`
+- `tests/test_pair_zscore.py`
+- `tests/test_data_1s.py`
+- `tests/test_pipelines_1s.py`
 - `tests/ma_band/`
 
 ## Docs
+- `docs/sdk-usage-fa.md`
 - `docs/local-simulator-fa.md`
 - `docs/srs-sdk-v0.1.md`
 

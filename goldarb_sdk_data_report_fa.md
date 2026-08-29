@@ -4,18 +4,22 @@
 این پروژه یک SDK و مجموعه ابزار جمع‌آوری داده برای پلتفرم Gold Arbitrage است.  
 هدف آن این است که داده‌های لازم برای:
 - تحلیل صندوق‌ها
-- بک‌تست دقیقه‌ای
+- بک‌تست **یک‌ثانیه‌ای** و دقیقه‌ای
+- اجرای همان Strategy روی پیپر لایو سشن ایران
 - محاسبه NAV حسابداری
 - نگهداری تاریخچه point-in-time
 - بررسی شکاف‌های داده
 
-را به‌صورت منظم جمع‌آوری و ذخیره کند.
+را به‌صورت منظم جمع‌آوری، ذخیره، و روی موتور بک‌تست / لایو اجرا کند.
+
+راهنمای عملی SDK (Strategy، ماه ۱s، سشن ۱۲:۰۰–۱۷:۰۰): [`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
 
 ## 2) اجزای اصلی پروژه
 
 ### `src/goldarb`
-هسته SDK است.  
-این بخش برای خواندن داده از API پلتفرم استفاده می‌شود.
+هسته SDK است.
+علاوه بر خواندن API، قرارداد `Strategy`، `BacktestEngine` / `LiveSimulationEngine`،
+و پایپلاین‌های `month_backtest` / `iran_session_live` را دارد.
 
 ### `fetch_data`
 مجموعه اسکریپت‌های جمع‌آوری و آرشیو داده است.  
@@ -353,6 +357,8 @@ df = pd.read_csv("file.csv")
 
 ## 7) نحوه استفاده از SDK
 
+سند کامل: [`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
+
 ### ساخت client
 ```python
 from goldarb import LabClient
@@ -364,10 +370,12 @@ with LabClient.from_env() as client:
 ### مثال گرفتن داده صندوق
 ```python
 with LabClient.from_env() as client:
-    bars = client.fund.candles("طلا", start="2026-07-01", end="2026-07-03", grain="1m")
+    bars = client.fund.candles("طلا", start="2026-07-01", end="2026-07-03", grain="1s")
     holdings = client.fund.holdings("طلا")
     units = client.fund.issued_units("طلا")
 ```
+
+`grain` می‌تواند `1s`، `1m`، یا `daily` باشد. برای استراتژی جفت از `1s` استفاده کنید.
 
 ### مثال گرفتن داده بازار
 ```python
@@ -376,6 +384,20 @@ with LabClient.from_env() as client:
     xau = client.market.xau(start="2026-07-01", end="2026-07-03", grain="1m")
     ime = client.market.ime_cdc_stats("GoldBar", days=180)
 ```
+
+### بک‌تست ماه ۱s سپس سشن لایو ایران
+```python
+from goldarb import BubbleRankStrategy, LabClient, iran_session_live, month_backtest
+
+strategy = BubbleRankStrategy()
+with LabClient.from_env() as client:
+    month = month_backtest(strategy, client, days=30, grain="1s", fill_session=True)
+    live = iran_session_live(
+        strategy, client, poll_seconds=1.0, lookback_days=0, include_session_bars=False
+    )
+```
+
+پوشش یک ثانیه اجباری است: `fill_session=True` هر ثانیهٔ ۱۲:۰۰–۱۷:۰۰ تهران را روی روزهای دارای داده پخش می‌کند؛ لایو با `poll_seconds=1.0` تا پایان سشن پول می‌کند.
 
 ## 8) گزارش وضعیت داده‌ها نسبت به دو document
 
@@ -411,6 +433,7 @@ with LabClient.from_env() as client:
 
 ### برای بک‌تست و تحلیل
 - `merged_output/*.csv`
+- مسیر Strategy روی `grain=1s`: `month_backtest` سپس `iran_session_live` (سند: `docs/sdk-usage-fa.md`)
 
 ### برای backfill داده‌های missing
 ```bash
@@ -418,8 +441,9 @@ python3 -m fetch_data.collect_missing_data --days 180
 ```
 
 ## 10) جمع‌بندی
-این پروژه الان سه کار اصلی می‌کند:
+این پروژه الان چهار کار اصلی می‌کند:
 1. داده را از SDK/API می‌گیرد
 2. آن را در archive نگه می‌دارد
 3. فایل‌های ترکیبی و coverage report برای تحلیل می‌سازد
+4. همان Strategy را روی بک‌تست ۱s و پیپر لایو سشن ایران اجرا می‌کند
 

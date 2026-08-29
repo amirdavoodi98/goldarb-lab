@@ -160,8 +160,8 @@ def test_live_engine_uses_same_strategy(tmp_path):
             "fetched_at": (start + timedelta(minutes=5)).isoformat(),
         },
         book={
-            "best_bid": "102",
-            "best_ask": "104",
+            "best_bid": "103",
+            "best_ask": "103",
             "buy_orders": [{"volume": 10}],
             "sell_orders": [{"volume": 10}],
         },
@@ -174,6 +174,7 @@ def test_live_engine_uses_same_strategy(tmp_path):
             feed,
             symbol="طلا",
             include_session_bars=True,
+            bar_grain="1m",
             session_day=start.date(),
             max_polls=1,
             sleep=lambda _: None,
@@ -219,6 +220,7 @@ def test_live_provider_skips_duplicates_and_survives_errors():
     provider = LiveDataProvider(
         feed,
         session_day=start.date(),
+        bar_grain="1m",
         max_polls=3,
         sleep=lambda _: None,
         now=lambda: start + timedelta(minutes=1),

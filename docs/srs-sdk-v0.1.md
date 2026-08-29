@@ -22,6 +22,12 @@
 2. Live Market Simulation / Paper Trading
 3. در آینده Live Trading واقعی
 
+### 1.2 سند استفاده
+
+راهنمای عملی نصب، قرارداد Strategy، بک‌تست ماهانه با پوشش **یک ثانیه**، و پیپر لایو سشن ۱۲:۰۰–۱۷:۰۰ تهران:
+
+[`docs/sdk-usage-fa.md`](sdk-usage-fa.md)
+
 ---
 
 ## 2. اهداف اصلی

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -13,7 +13,18 @@ from .simulation.models import MarketSnapshot, Quote, decimal_value
 TEHRAN = ZoneInfo("Asia/Tehran")
 SESSION_OPEN = time(12, 0)
 SESSION_CLOSE = time(17, 0)
+ONE_SECOND = timedelta(seconds=1)
 ZERO = Decimal(0)
+
+
+def grain_step(grain: str) -> timedelta:
+    """Map API bar grain to the snapshot grid step (default: 1s)."""
+    key = (grain or "1s").strip().lower()
+    if key in {"1m", "1min", "minute"}:
+        return timedelta(minutes=1)
+    if key in {"daily", "1d", "day"}:
+        return timedelta(days=1)
+    return ONE_SECOND
 
 
 def session_bounds(day: date | None = None) -> tuple[datetime, datetime]:
@@ -33,6 +44,39 @@ def in_iran_session(timestamp: datetime, *, day: date | None = None) -> bool:
         return False
     start, end = session_bounds(local.date())
     return start <= local <= end
+
+
+def session_timeline(
+    day: date,
+    *,
+    first: datetime | None = None,
+    last: datetime | None = None,
+    step: timedelta = ONE_SECOND,
+    fill_session: bool = False,
+) -> list[datetime]:
+    """1s (or ``step``) timestamps for one Iran cash session.
+
+    ``fill_session=True`` covers 12:00–17:00 inclusive. Otherwise the grid
+    spans only ``[first, last]`` clipped to the session.
+    """
+    open_at, close_at = session_bounds(day)
+    if fill_session:
+        start, end = open_at, close_at
+    else:
+        if first is None or last is None:
+            return []
+        start = max(first.astimezone(TEHRAN), open_at)
+        end = min(last.astimezone(TEHRAN), close_at)
+    start = start.replace(microsecond=0)
+    end = end.replace(microsecond=0)
+    if step <= timedelta(0) or start > end:
+        return []
+    points: list[datetime] = []
+    cursor = start
+    while cursor <= end:
+        points.append(cursor)
+        cursor += step
+    return points
 
 
 def filter_session_snapshots(

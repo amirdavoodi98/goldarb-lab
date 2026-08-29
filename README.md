@@ -90,6 +90,9 @@ Use `LocalSimulator` for fully offline runs. Your strategy injects timezone-awar
 bid/ask snapshots and the SDK persists accounts, orders, fills, positions, fees,
 P&L, and equity history in SQLite.
 
+Persian SDK usage (install, Strategy contract, 1s month backtest, Iran live session):
+[`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
+
 To keep a Strategy environment-agnostic, prefer `BacktestEngine` /
 `LiveSimulationEngine` with a `DataProvider`. The same `Strategy` subclass runs
 on historical bars and live paper data; engines apply fee, slippage, and latency
@@ -109,6 +112,50 @@ result = BacktestEngine().run(
 print(result.metrics.total_return, result.portfolio.equity)
 ```
 
+The same engines run Lab pair strategies on **1s** snapshots covering the
+full gold-fund universe. Both need `allow_short=True` and `premium` (or close+NAV).
+`window_days` is a calendar window over those 1s premiums, not a tick count.
+
+**Past-month backtest then 5-hour Iran live paper session:**
+
+```python
+from goldarb import BubbleRankStrategy, LabClient, iran_session_live, month_backtest
+
+strategy = BubbleRankStrategy()
+with LabClient.from_env() as client:
+    month = month_backtest(strategy, client, days=30, grain="1s", fill_session=True)
+    live = iran_session_live(
+        strategy, client, poll_seconds=1.0, lookback_days=0, include_session_bars=False
+    )
+```
+
+`month_backtest` fetches `grain=1s` for all funds and emits every second of
+12:00–17:00 Tehran (`fill_session=True`). `iran_session_live` polls the
+universe every second until session close (5 hours). Keep the same strategy
+instance so the month-long premium window stays warm; pass `lookback_days=0`
+so live does not replay history the backtest already consumed. For a live-only
+cold start, use `lookback_days=20` instead.
+
+CLI: `python examples/backtest_month_1s.py` then `python examples/simulate_iran_session_1s.py`.
+
+```python
+from goldarb import BacktestEngine, BubbleRankStrategy, RunConfig
+from goldarb.data import HistoricalDataProvider
+
+result = BacktestEngine().run(
+    BubbleRankStrategy(capital_per_side="100000"),
+    HistoricalDataProvider.from_1s(12, premiums={"طلا": [0] * 11 + [-2.5], "زر": [0] * 11 + [2.5]}),
+    RunConfig(strategy_name="bubble_rank", initial_cash="1000000", allow_short=True),
+)
+```
+
+Live 1s bars: `client.fund.candles_many(GOLD_FUND_SYMBOLS, start=..., end=..., grain="1s")`
+then `HistoricalDataProvider.from_symbol_bars(..., session_hours=True)`.
+
+
+Offline examples: `examples/backtest_bubble_rank.py`, `examples/backtest_pair_zscore.py`.
+
+Persian usage: [`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
 Requirements: [`docs/srs-sdk-v0.1.md`](docs/srs-sdk-v0.1.md).
 Full Persian simulator guide: [`docs/local-simulator-fa.md`](docs/local-simulator-fa.md)
 
@@ -375,6 +422,10 @@ Collects missing data and writes coverage reports.
 ```bash
 python examples/backtest_premium_threshold.py
 python examples/backtest_ma_band.py
+python examples/backtest_month_1s.py
+python examples/simulate_iran_session_1s.py
+python examples/backtest_bubble_rank.py
+python examples/backtest_pair_zscore.py
 python examples/fetch_tala_1s.py
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py

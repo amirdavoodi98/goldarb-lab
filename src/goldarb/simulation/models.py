@@ -35,6 +35,8 @@ class Quote:
     last: Decimal | None = None
     bid_size: Decimal | None = None
     ask_size: Decimal | None = None
+    premium: Decimal | None = None
+    nav: Decimal | None = None
 
 
 @dataclass(frozen=True)
