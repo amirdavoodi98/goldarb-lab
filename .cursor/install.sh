@@ -18,6 +18,9 @@ fi
 "$VENV_DIR/bin/python" -m pip install --upgrade pip
 "$VENV_DIR/bin/pip" install -e "$REPO_DIR[pandas,dev]"
 
+# ruff is an optional lint tool (installed separately in CI); make it available.
+"$VENV_DIR/bin/pip" install ruff
+
 # Auto-activate the venv for interactive shells so python/pytest resolve to it.
 ACTIVATE_LINE="source \"$VENV_DIR/bin/activate\""
 if ! grep -qxF "$ACTIVATE_LINE" "$HOME/.bashrc" 2>/dev/null; then
