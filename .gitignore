@@ -15,6 +15,9 @@ build/
 venv/
 ENV/
 
+# Local paper-simulation databases (created by examples/tests)
+*.sqlite3
+
 # Test / type / lint caches
 .pytest_cache/
 .ruff_cache/
