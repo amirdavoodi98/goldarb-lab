@@ -8,6 +8,7 @@ from typing import Self
 from ._http import LabHttp
 from .fund import FundAPI
 from .market import MarketAPI
+from .simulation.remote import RemoteSimulator
 
 
 class LabClient:
@@ -21,6 +22,7 @@ class LabClient:
         self._http = LabHttp(base_url=base_url, token=token, timeout=timeout)
         self.fund = FundAPI(self._http)
         self.market = MarketAPI(self._http)
+        self.simulation = RemoteSimulator(self._http)
 
     @classmethod
     def from_env(

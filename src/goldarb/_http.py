@@ -79,6 +79,16 @@ class LabHttp:
         resp.raise_for_status()
         return resp.json()
 
+    def post_json(self, path: str, body: dict[str, Any] | None = None) -> Any:
+        resp = self._client.post(path, json=body or {})
+        resp.raise_for_status()
+        return resp.json()
+
+    def delete_json(self, path: str) -> Any:
+        resp = self._client.delete(path)
+        resp.raise_for_status()
+        return resp.json()
+
     def get_paginated_results(
         self,
         path: str,

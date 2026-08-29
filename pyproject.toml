@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "goldarb-lab"
-version = "0.6.0"
-description = "Python client for Gold Arbitrage strategy lab (fund/XAU/USDT/IME bars + live tips)."
+version = "0.7.0"
+description = "Gold Arbitrage data SDK with remote and offline paper simulation."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
