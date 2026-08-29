@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Sequence
-from datetime import UTC, date, datetime, timedelta
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
@@ -13,6 +13,7 @@ from .session import (
     in_iran_session,
     snapshot_from_live,
 )
+from .signals.stats import premium_from_row, to_float
 from .simulation.models import MarketSnapshot, Quote, decimal_value
 
 ZERO = Decimal(0)
@@ -111,6 +112,32 @@ def snapshots_from_closes(
     return snapshots
 
 
+def snapshots_from_cross_section(
+    bars: Sequence[tuple[datetime | date, Mapping[str, Mapping[str, Any]]]],
+    *,
+    event_prefix: str = "cross",
+) -> list[MarketSnapshot]:
+    """Build aligned multi-symbol snapshots (close + optional premium/NAV)."""
+    snapshots: list[MarketSnapshot] = []
+    for stamp, by_symbol in bars:
+        timestamp = _aware_timestamp(stamp)
+        quotes: list[Quote] = []
+        for symbol, fields in by_symbol.items():
+            quote = _quote_from_fields(symbol, fields)
+            if quote is not None:
+                quotes.append(quote)
+        if not quotes:
+            continue
+        snapshots.append(
+            MarketSnapshot(
+                event_id=f"{event_prefix}:{timestamp.isoformat()}",
+                timestamp=timestamp,
+                quotes=tuple(quotes),
+            )
+        )
+    return snapshots
+
+
 def snapshots_from_bars(
     bars: Sequence[dict[str, Any]],
     *,
@@ -158,6 +185,15 @@ class HistoricalDataProvider:
         step: timedelta = timedelta(minutes=1),
     ) -> HistoricalDataProvider:
         return cls(snapshots_from_closes(closes, symbol=symbol, start=start, step=step))
+
+    @classmethod
+    def from_cross_section(
+        cls,
+        bars: Sequence[tuple[datetime | date, Mapping[str, Mapping[str, Any]]]],
+        *,
+        event_prefix: str = "cross",
+    ) -> HistoricalDataProvider:
+        return cls(snapshots_from_cross_section(bars, event_prefix=event_prefix))
 
     def events(self) -> Iterator[MarketSnapshot]:
         yield from self._snapshots
@@ -275,6 +311,31 @@ class LiveDataProvider:
             sleeper(self.poll_seconds)
 
 
+def _aware_timestamp(stamp: datetime | date) -> datetime:
+    if isinstance(stamp, datetime):
+        if stamp.tzinfo is None:
+            return stamp.replace(tzinfo=UTC)
+        return stamp
+    return datetime.combine(stamp, time.min, tzinfo=UTC)
+
+
+def _quote_from_fields(symbol: str, fields: Mapping[str, Any]) -> Quote | None:
+    close = _bar_close(dict(fields))
+    if close is None:
+        return None
+    premium = premium_from_row(dict(fields))
+    nav_raw = fields.get("nav")
+    if nav_raw is None:
+        nav_raw = fields.get("nav_price")
+    nav = to_float(nav_raw)
+    return Quote(
+        symbol=symbol,
+        last=close,
+        premium=None if premium is None else decimal_value(premium),
+        nav=None if nav is None else decimal_value(nav),
+    )
+
+
 def _bar_close(row: dict[str, Any]) -> Decimal | None:
     for key in ("close", "close_price"):
         value = row.get(key)
@@ -305,4 +366,5 @@ __all__ = [
     "snapshot_close",
     "snapshots_from_bars",
     "snapshots_from_closes",
+    "snapshots_from_cross_section",
 ]

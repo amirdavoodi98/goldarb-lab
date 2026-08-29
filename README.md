@@ -109,6 +109,24 @@ result = BacktestEngine().run(
 print(result.metrics.total_return, result.portfolio.equity)
 ```
 
+The same engines run Lab pair strategies. Both need `allow_short=True` and snapshots with `premium` (or close+NAV):
+
+```python
+from goldarb import BacktestEngine, BubbleRankStrategy, PairZScoreStrategy, RunConfig
+from goldarb.data import HistoricalDataProvider
+
+bars = [
+    # (date, {symbol: {close, premium}})
+]
+result = BacktestEngine().run(
+    BubbleRankStrategy(capital_per_side="100000"),
+    HistoricalDataProvider.from_cross_section(bars),
+    RunConfig(strategy_name="bubble_rank", initial_cash="1000000", allow_short=True),
+)
+```
+
+Offline examples: `examples/backtest_bubble_rank.py`, `examples/backtest_pair_zscore.py`.
+
 Requirements: [`docs/srs-sdk-v0.1.md`](docs/srs-sdk-v0.1.md).
 Full Persian simulator guide: [`docs/local-simulator-fa.md`](docs/local-simulator-fa.md)
 
@@ -375,6 +393,8 @@ Collects missing data and writes coverage reports.
 ```bash
 python examples/backtest_premium_threshold.py
 python examples/backtest_ma_band.py
+python examples/backtest_bubble_rank.py
+python examples/backtest_pair_zscore.py
 python examples/fetch_tala_1s.py
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py
