@@ -1,4 +1,8 @@
-"""Run the MA-band LocalSimulator during today's Iran cash session (12:00–17:00)."""
+"""Run the MA-band strategy during today's Iran cash session (12:00–17:00).
+
+This file is a runner only: data comes from ``LiveDataProvider``, decisions
+from ``MaBandStrategy``, and fills from ``LiveSimulationEngine``.
+"""
 
 from __future__ import annotations
 
@@ -10,19 +14,14 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
-from ma_band import MaBandEngine, snapshots_from_bars
-from session import (
-    TEHRAN,
-    filter_session_snapshots,
-    format_tick,
-    in_iran_session,
-    session_bounds,
-    snapshot_from_live,
-    tick_record,
-)
+from session import TEHRAN, format_tick, session_bounds, tick_record
 
 from goldarb import LabClient
+from goldarb.data import LabLiveFeed, LiveDataProvider
+from goldarb.engine import LiveSimulationEngine, RunConfig
+from goldarb.execution import PercentFee
 from goldarb.simulation import LocalSimulator
+from goldarb.strategies import MaBandStrategy
 
 HERE = Path(__file__).resolve().parent
 SYMBOL = os.environ.get("GOLDARB_SYMBOL", "طلا")
@@ -96,95 +95,81 @@ def main() -> None:
     _wait_for_open(start)
     client = _client()
     _emit(f"logged in as {os.environ.get('GOLDARB_USERNAME', '').strip()}")
-    seen: set[str] = set()
-    signal_count = 0
-    with LocalSimulator(DB_PATH) as simulator:
-        account = simulator.create_account(
-            initial_cash="1000000000",
-            fee_rate="0.0005",
-            allow_short=False,
-            label="ma-band-iran-session",
-        )
-        engine = MaBandEngine(
-            simulator=simulator,
-            account_id=account.id,
+    strategy = MaBandStrategy(
+        symbol=SYMBOL,
+        window=WINDOW,
+        buy_band=BUY_BAND,
+        sell_band=SELL_BAND,
+        quantity=QUANTITY,
+    )
+
+    def on_event(kind: str, ctx) -> None:
+        if kind != "tick":
+            return
+        tick = strategy.last_tick
+        if tick is None:
+            return
+        line = format_tick(
+            tick,
             symbol=SYMBOL,
-            window=WINDOW,
-            buy_band=BUY_BAND,
-            sell_band=SELL_BAND,
-            quantity=QUANTITY,
+            buy_band=Decimal(BUY_BAND),
+            sell_band=Decimal(SELL_BAND),
         )
-        try:
-            while datetime.now(TEHRAN) <= end:
-                day = datetime.now(TEHRAN).date()
-                try:
-                    bars = client.fund.candles(
-                        SYMBOL,
-                        start=day.isoformat(),
-                        end=day.isoformat(),
-                        grain="1m",
-                    )
-                    last = client.fund.last_price(SYMBOL)
-                    book = client.fund.orderbook(SYMBOL)
-                except Exception as exc:
-                    _emit(f"feed error: {exc}")
-                    time.sleep(POLL_SECONDS)
-                    continue
+        _emit(line)
+        if tick.signal is not None:
+            _write_signal(tick_record(tick, symbol=SYMBOL))
+            status = ctx.status()
+            _emit(f"  order submitted  cash={status['cash']}")
 
-                pending = []
-                if not seen:
-                    pending.extend(
-                        filter_session_snapshots(
-                            snapshots_from_bars(bars, symbol=SYMBOL)
-                        )
-                    )
-                live = snapshot_from_live(
-                    symbol=SYMBOL,
-                    last_price=last if isinstance(last, dict) else {},
-                    orderbook=book if isinstance(book, dict) else None,
-                )
-                if live is not None and in_iran_session(live.timestamp):
-                    pending.append(live)
+    def on_error(exc: BaseException) -> None:
+        _emit(f"feed error: {exc}")
 
-                new_ticks = 0
-                for snapshot in pending:
-                    if snapshot.event_id in seen:
-                        continue
-                    seen.add(snapshot.event_id)
-                    tick = engine.on_snapshot(snapshot)
-                    if tick is None:
-                        continue
-                    new_ticks += 1
-                    line = format_tick(
-                        tick,
-                        symbol=SYMBOL,
-                        buy_band=Decimal(BUY_BAND),
-                        sell_band=Decimal(SELL_BAND),
-                    )
-                    _emit(line)
-                    if tick.signal is not None:
-                        signal_count += 1
-                        _write_signal(tick_record(tick, symbol=SYMBOL))
-                        _emit(
-                            "  order submitted  cash="
-                            f"{simulator.portfolio(account.id).cash}"
-                        )
+    def on_idle() -> None:
+        _emit(
+            f"{datetime.now(TEHRAN).strftime('%H:%M:%S')}  "
+            f"no new bar  signals={len(strategy.signals)}"
+        )
 
-                if new_ticks == 0:
-                    _emit(
-                        f"{datetime.now(TEHRAN).strftime('%H:%M:%S')}  "
-                        f"no new bar  seen={len(seen)}  signals={signal_count}"
-                    )
-                time.sleep(POLL_SECONDS)
-        finally:
-            client.close()
-            result = engine.result()
-            _emit(
-                f"session end  signals={len(result.signals)}  "
-                f"orders={len(result.orders)}  fills={len(result.fills)}  "
-                f"equity={result.portfolio.equity}  "
-                f"realized={result.portfolio.realized_pnl}"
+    provider = LiveDataProvider(
+        LabLiveFeed(client),
+        symbol=SYMBOL,
+        poll_seconds=POLL_SECONDS,
+        stop_at=end,
+        on_error=on_error,
+        on_idle=on_idle,
+    )
+    try:
+        with LocalSimulator(DB_PATH) as simulator:
+            result = LiveSimulationEngine().run(
+                strategy,
+                provider,
+                RunConfig(
+                    strategy_name=strategy.name,
+                    strategy_version=strategy.version,
+                    initial_cash="1000000000",
+                    label="ma-band-iran-session",
+                    database=str(DB_PATH),
+                    strategy_config={
+                        "symbol": SYMBOL,
+                        "window": str(WINDOW),
+                        "buy_band": BUY_BAND,
+                        "sell_band": SELL_BAND,
+                        "quantity": QUANTITY,
+                    },
+                ),
+                simulator=simulator,
+                fee=PercentFee("0.0005"),
+                on_event=on_event,
             )
+            portfolio = result.portfolio
+            _emit(
+                f"session end  signals={len(strategy.signals)}  "
+                f"orders={len(result.orders)}  fills={len(result.fills)}  "
+                f"equity={portfolio.equity}  "
+                f"realized={portfolio.realized_pnl}"
+            )
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":

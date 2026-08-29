@@ -10,6 +10,7 @@ Use it to:
 - collect missing history into local archives
 - build analysis-ready merged files
 - simulate MARKET/LIMIT orders locally in SQLite or through the platform API
+- run the same Strategy on historical backtests and live paper simulation
 
 ## What this repo contains
 
@@ -88,6 +89,28 @@ when the SDK process is offline.
 Use `LocalSimulator` for fully offline runs. Your strategy injects timezone-aware
 bid/ask snapshots and the SDK persists accounts, orders, fills, positions, fees,
 P&L, and equity history in SQLite.
+
+To keep a Strategy environment-agnostic, prefer `BacktestEngine` /
+`LiveSimulationEngine` with a `DataProvider`. The same `Strategy` subclass runs
+on historical bars and live paper data; engines apply fee, slippage, and latency
+models before `LocalSimulator` matches orders.
+
+```python
+from goldarb import BacktestEngine, MaBandStrategy, RunConfig
+from goldarb.data import HistoricalDataProvider
+from goldarb.execution import PercentFee
+
+result = BacktestEngine().run(
+    MaBandStrategy(),
+    HistoricalDataProvider.from_closes(("100", "100", "100", "97", "103")),
+    RunConfig(strategy_name="ma_band", initial_cash="10000"),
+    fee=PercentFee("0.0005"),
+)
+print(result.metrics.total_return, result.portfolio.equity)
+```
+
+Requirements: [`docs/srs-sdk-v0.1.md`](docs/srs-sdk-v0.1.md).
+Full Persian simulator guide: [`docs/local-simulator-fa.md`](docs/local-simulator-fa.md)
 
 ```python
 from datetime import UTC, datetime
@@ -351,6 +374,7 @@ Collects missing data and writes coverage reports.
 
 ```bash
 python examples/backtest_premium_threshold.py
+python examples/backtest_ma_band.py
 python examples/fetch_tala_1s.py
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py

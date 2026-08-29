@@ -23,6 +23,13 @@
 - `src/goldarb/fund.py`
 - `src/goldarb/market.py`
 - `src/goldarb/premium_threshold.py`
+- `src/goldarb/strategy.py`
+- `src/goldarb/data.py`
+- `src/goldarb/execution.py`
+- `src/goldarb/engine.py`
+- `src/goldarb/session.py`
+- `src/goldarb/strategies/ma_band.py`
+- `src/goldarb/simulation/`
 
 ## fetch_data
 - `fetch_data/README.md`
@@ -47,11 +54,14 @@
 
 ## Examples
 - `examples/backtest_premium_threshold.py`
+- `examples/backtest_ma_band.py`
 - `examples/fetch_issued_units.py`
 - `examples/fetch_tala_1m.py`
 - `examples/fetch_usdt.py`
 - `examples/fetch_xau.py`
 - `examples/strategy_data_bundle.py`
+- `examples/simulate_local.py`
+- `examples/simulate_remote.py`
 
 ## Tests
 - `tests/test_chunking.py`
@@ -59,6 +69,15 @@
 - `tests/test_ime_cdc.py`
 - `tests/test_premium_threshold.py`
 - `tests/test_usdt_units.py`
+- `tests/test_local_simulation.py`
+- `tests/test_remote_simulation.py`
+- `tests/test_strategy_engine.py`
+- `tests/test_execution_models.py`
+- `tests/ma_band/`
+
+## Docs
+- `docs/local-simulator-fa.md`
+- `docs/srs-sdk-v0.1.md`
 
 ## Data / Archives
 - `archive/fund_bars_1m/آتش.jsonl`
