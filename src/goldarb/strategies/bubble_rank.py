@@ -52,6 +52,12 @@ class BubbleRankStrategy(Strategy):
         self.events: list[dict[str, Any]] = []
         self.last_ranking: dict[str, Any] | None = None
 
+    def on_start(self, ctx: StrategyContext) -> None:
+        self._current_pair = None
+        if str(ctx.config.get("reset_history", "")).lower() in {"1", "true", "yes"}:
+            self._premiums.clear()
+            self.events.clear()
+
     def on_market_data(self, ctx: StrategyContext) -> None:
         snapshot = ctx.market
         if snapshot is None:

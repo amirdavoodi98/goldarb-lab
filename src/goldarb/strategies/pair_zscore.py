@@ -58,6 +58,12 @@ class PairZScoreStrategy(Strategy):
         self.last_status: str | None = None
         self.last_stats: dict[str, Any] | None = None
 
+    def on_start(self, ctx: StrategyContext) -> None:
+        self._current_pair = None
+        if str(ctx.config.get("reset_history", "")).lower() in {"1", "true", "yes"}:
+            self._spreads.clear()
+            self.events.clear()
+
     def on_market_data(self, ctx: StrategyContext) -> None:
         snapshot = ctx.market
         if snapshot is None:
@@ -65,9 +71,12 @@ class PairZScoreStrategy(Strategy):
         prem_a = snapshot_premium(snapshot, self.fund_a)
         prem_b = snapshot_premium(snapshot, self.fund_b)
         if prem_a is not None and prem_b is not None:
-            self._spreads.append(
-                (snapshot.timestamp, round(float(prem_a) - float(prem_b), 6))
-            )
+            spread = (snapshot.timestamp, round(float(prem_a) - float(prem_b), 6))
+            if self._spreads and snapshot.timestamp <= self._spreads[-1][0]:
+                if self._spreads[-1][0] == snapshot.timestamp:
+                    self._spreads[-1] = spread
+            else:
+                self._spreads.append(spread)
             cutoff = snapshot.timestamp - timedelta(days=self.window_days)
             if self.window_days > 0:
                 keep = 0

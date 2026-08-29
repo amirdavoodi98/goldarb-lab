@@ -81,6 +81,10 @@ def append_premiums(
     cutoff = None if window is None or window.total_seconds() <= 0 else timestamp - window
     for symbol, premium in premiums_on_snapshot(snapshot).items():
         series = history.setdefault(symbol, [])
+        if series and timestamp <= series[-1][0]:
+            if series[-1][0] == timestamp:
+                series[-1] = (timestamp, premium)
+            continue
         series.append((timestamp, premium))
         if cutoff is None:
             continue

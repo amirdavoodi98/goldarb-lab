@@ -113,6 +113,28 @@ The same engines run Lab pair strategies on **1s** snapshots covering the
 full gold-fund universe. Both need `allow_short=True` and `premium` (or close+NAV).
 `window_days` is a calendar window over those 1s premiums, not a tick count.
 
+**Past-month backtest then 5-hour Iran live paper session:**
+
+```python
+from goldarb import BubbleRankStrategy, LabClient, iran_session_live, month_backtest
+
+strategy = BubbleRankStrategy()
+with LabClient.from_env() as client:
+    month = month_backtest(strategy, client, days=30, grain="1s", fill_session=True)
+    live = iran_session_live(
+        strategy, client, poll_seconds=1.0, lookback_days=0, include_session_bars=False
+    )
+```
+
+`month_backtest` fetches `grain=1s` for all funds and emits every second of
+12:00–17:00 Tehran (`fill_session=True`). `iran_session_live` polls the
+universe every second until session close (5 hours). Keep the same strategy
+instance so the month-long premium window stays warm; pass `lookback_days=0`
+so live does not replay history the backtest already consumed. For a live-only
+cold start, use `lookback_days=20` instead.
+
+CLI: `python examples/backtest_month_1s.py` then `python examples/simulate_iran_session_1s.py`.
+
 ```python
 from goldarb import BacktestEngine, BubbleRankStrategy, RunConfig
 from goldarb.data import HistoricalDataProvider
@@ -125,7 +147,7 @@ result = BacktestEngine().run(
 ```
 
 Live 1s bars: `client.fund.candles_many(GOLD_FUND_SYMBOLS, start=..., end=..., grain="1s")`
-then `HistoricalDataProvider.from_symbol_bars(...)`.
+then `HistoricalDataProvider.from_symbol_bars(..., session_hours=True)`.
 
 
 Offline examples: `examples/backtest_bubble_rank.py`, `examples/backtest_pair_zscore.py`.
@@ -396,6 +418,8 @@ Collects missing data and writes coverage reports.
 ```bash
 python examples/backtest_premium_threshold.py
 python examples/backtest_ma_band.py
+python examples/backtest_month_1s.py
+python examples/simulate_iran_session_1s.py
 python examples/backtest_bubble_rank.py
 python examples/backtest_pair_zscore.py
 python examples/fetch_tala_1s.py
