@@ -1,0 +1,5 @@
+__pycache__/
+iran_session.sqlite3
+iran_session.sqlite3-*
+iran_session_ticks.log
+iran_session_signals.jsonl
