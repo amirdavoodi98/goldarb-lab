@@ -90,6 +90,9 @@ Use `LocalSimulator` for fully offline runs. Your strategy injects timezone-awar
 bid/ask snapshots and the SDK persists accounts, orders, fills, positions, fees,
 P&L, and equity history in SQLite.
 
+Persian SDK usage (install, Strategy contract, 1s month backtest, Iran live session):
+[`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
+
 To keep a Strategy environment-agnostic, prefer `BacktestEngine` /
 `LiveSimulationEngine` with a `DataProvider`. The same `Strategy` subclass runs
 on historical bars and live paper data; engines apply fee, slippage, and latency
@@ -152,6 +155,7 @@ then `HistoricalDataProvider.from_symbol_bars(..., session_hours=True)`.
 
 Offline examples: `examples/backtest_bubble_rank.py`, `examples/backtest_pair_zscore.py`.
 
+Persian usage: [`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
 Requirements: [`docs/srs-sdk-v0.1.md`](docs/srs-sdk-v0.1.md).
 Full Persian simulator guide: [`docs/local-simulator-fa.md`](docs/local-simulator-fa.md)
 
