@@ -15,6 +15,7 @@ from .session import (
 )
 from .signals.stats import premium_from_row, to_float
 from .simulation.models import MarketSnapshot, Quote, decimal_value
+from .universe import GOLD_FUND_SYMBOLS
 
 ZERO = Decimal(0)
 
@@ -138,6 +139,102 @@ def snapshots_from_cross_section(
     return snapshots
 
 
+def cross_section_1s(
+    n: int,
+    *,
+    premiums: Mapping[str, Sequence[float]] | None = None,
+    start: datetime | None = None,
+    symbols: Sequence[str] | None = None,
+    default_premium: float = 0.0,
+) -> list[tuple[datetime, dict[str, dict[str, Any]]]]:
+    """Build ``n`` consecutive 1s snapshots covering the gold-fund universe."""
+    universe = tuple(symbols) if symbols is not None else GOLD_FUND_SYMBOLS
+    origin = start or datetime(2026, 8, 29, 8, 30, 0, tzinfo=UTC)
+    rows: list[tuple[datetime, dict[str, dict[str, Any]]]] = []
+    for index in range(n):
+        by_symbol: dict[str, dict[str, Any]] = {}
+        for offset, symbol in enumerate(universe):
+            series = None if premiums is None else premiums.get(symbol)
+            if series is None:
+                prem = default_premium
+            elif index < len(series):
+                prem = float(series[index])
+            elif series:
+                prem = float(series[-1])
+            else:
+                prem = default_premium
+            by_symbol[symbol] = {
+                "close": 10000.0 + offset * 250.0,
+                "premium": prem,
+            }
+        rows.append((origin + timedelta(seconds=index), by_symbol))
+    return rows
+
+
+def snapshots_from_symbol_bars(
+    by_symbol: Mapping[str, Sequence[Mapping[str, Any]]],
+    *,
+    ffill: bool = True,
+    step: timedelta = timedelta(seconds=1),
+    event_prefix: str = "1s",
+) -> list[MarketSnapshot]:
+    """Align sparse per-symbol bars onto a 1s grid (optional last-tick fill)."""
+    parsed: dict[str, dict[datetime, Quote]] = {}
+    stamps: set[datetime] = set()
+    for symbol, rows in by_symbol.items():
+        bucket: dict[datetime, Quote] = {}
+        for row in rows:
+            timestamp = _bar_timestamp(dict(row))
+            quote = _quote_from_fields(symbol, row)
+            if timestamp is None or quote is None:
+                continue
+            timestamp = timestamp.replace(microsecond=0)
+            bucket[timestamp] = quote
+            stamps.add(timestamp)
+        if bucket:
+            parsed[symbol] = bucket
+    if not stamps:
+        return []
+
+    if ffill:
+        timeline = _second_grid(min(stamps), max(stamps), step)
+    else:
+        timeline = sorted(stamps)
+
+    snapshots: list[MarketSnapshot] = []
+    last: dict[str, Quote] = {}
+    for timestamp in timeline:
+        quotes: list[Quote] = []
+        for symbol, bucket in parsed.items():
+            quote = bucket.get(timestamp)
+            if quote is not None:
+                last[symbol] = quote
+                quotes.append(quote)
+            elif ffill and symbol in last:
+                quotes.append(last[symbol])
+        if not quotes:
+            continue
+        snapshots.append(
+            MarketSnapshot(
+                event_id=f"{event_prefix}:{timestamp.isoformat()}",
+                timestamp=timestamp,
+                quotes=tuple(quotes),
+            )
+        )
+    return snapshots
+
+
+def _second_grid(start: datetime, end: datetime, step: timedelta) -> list[datetime]:
+    if step <= timedelta(0):
+        raise ValueError("step must be positive")
+    points: list[datetime] = []
+    cursor = start
+    while cursor <= end:
+        points.append(cursor)
+        cursor += step
+    return points
+
+
 def snapshots_from_bars(
     bars: Sequence[dict[str, Any]],
     *,
@@ -194,6 +291,41 @@ class HistoricalDataProvider:
         event_prefix: str = "cross",
     ) -> HistoricalDataProvider:
         return cls(snapshots_from_cross_section(bars, event_prefix=event_prefix))
+
+    @classmethod
+    def from_1s(
+        cls,
+        n: int,
+        *,
+        premiums: Mapping[str, Sequence[float]] | None = None,
+        start: datetime | None = None,
+        symbols: Sequence[str] | None = None,
+        event_prefix: str = "1s",
+    ) -> HistoricalDataProvider:
+        """Consecutive 1s last-only snapshots for the full gold-fund universe."""
+        return cls.from_cross_section(
+            cross_section_1s(n, premiums=premiums, start=start, symbols=symbols),
+            event_prefix=event_prefix,
+        )
+
+    @classmethod
+    def from_symbol_bars(
+        cls,
+        by_symbol: Mapping[str, Sequence[Mapping[str, Any]]],
+        *,
+        ffill: bool = True,
+        step: timedelta = timedelta(seconds=1),
+        event_prefix: str = "1s",
+    ) -> HistoricalDataProvider:
+        """Align API ``grain=1s`` bars (one list per symbol) onto a 1s grid."""
+        return cls(
+            snapshots_from_symbol_bars(
+                by_symbol,
+                ffill=ffill,
+                step=step,
+                event_prefix=event_prefix,
+            )
+        )
 
     def events(self) -> Iterator[MarketSnapshot]:
         yield from self._snapshots
@@ -367,4 +499,6 @@ __all__ = [
     "snapshots_from_bars",
     "snapshots_from_closes",
     "snapshots_from_cross_section",
+    "snapshots_from_symbol_bars",
+    "cross_section_1s",
 ]

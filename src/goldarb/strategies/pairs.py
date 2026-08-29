@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from datetime import datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 from typing import Any
 from uuid import uuid4
@@ -57,12 +58,42 @@ def premiums_on_snapshot(snapshot: MarketSnapshot) -> dict[str, float]:
     return values
 
 
+def window_values(
+    samples: Sequence[tuple[datetime, float]],
+    *,
+    now: datetime,
+    window: timedelta,
+) -> list[float]:
+    """Premiums whose timestamp falls in ``[now - window, now]``."""
+    if window.total_seconds() <= 0:
+        return [value for _, value in samples]
+    cutoff = now - window
+    return [value for stamp, value in samples if stamp >= cutoff]
+
+
 def append_premiums(
-    history: dict[str, list[float]],
+    history: dict[str, list[tuple[datetime, float]]],
     snapshot: MarketSnapshot,
+    *,
+    window: timedelta | None = None,
 ) -> None:
+    timestamp = snapshot.timestamp
+    cutoff = None if window is None or window.total_seconds() <= 0 else timestamp - window
     for symbol, premium in premiums_on_snapshot(snapshot).items():
-        history.setdefault(symbol, []).append(premium)
+        series = history.setdefault(symbol, [])
+        series.append((timestamp, premium))
+        if cutoff is None:
+            continue
+        keep = 0
+        for index, (stamp, _) in enumerate(series):
+            if stamp >= cutoff:
+                keep = index
+                break
+        else:
+            series.clear()
+            continue
+        if keep:
+            del series[:keep]
 
 
 def flatten_positions(ctx: StrategyContext, *, prefix: str) -> None:

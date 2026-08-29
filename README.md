@@ -109,21 +109,24 @@ result = BacktestEngine().run(
 print(result.metrics.total_return, result.portfolio.equity)
 ```
 
-The same engines run Lab pair strategies. Both need `allow_short=True` and snapshots with `premium` (or close+NAV):
+The same engines run Lab pair strategies on **1s** snapshots covering the
+full gold-fund universe. Both need `allow_short=True` and `premium` (or close+NAV).
+`window_days` is a calendar window over those 1s premiums, not a tick count.
 
 ```python
-from goldarb import BacktestEngine, BubbleRankStrategy, PairZScoreStrategy, RunConfig
+from goldarb import BacktestEngine, BubbleRankStrategy, RunConfig
 from goldarb.data import HistoricalDataProvider
 
-bars = [
-    # (date, {symbol: {close, premium}})
-]
 result = BacktestEngine().run(
     BubbleRankStrategy(capital_per_side="100000"),
-    HistoricalDataProvider.from_cross_section(bars),
+    HistoricalDataProvider.from_1s(12, premiums={"طلا": [0] * 11 + [-2.5], "زر": [0] * 11 + [2.5]}),
     RunConfig(strategy_name="bubble_rank", initial_cash="1000000", allow_short=True),
 )
 ```
+
+Live 1s bars: `client.fund.candles_many(GOLD_FUND_SYMBOLS, start=..., end=..., grain="1s")`
+then `HistoricalDataProvider.from_symbol_bars(...)`.
+
 
 Offline examples: `examples/backtest_bubble_rank.py`, `examples/backtest_pair_zscore.py`.
 

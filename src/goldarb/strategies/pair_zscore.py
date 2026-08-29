@@ -2,10 +2,14 @@
 
 Long the cheap leg / short the rich leg of a fixed fund pair when
 ``|z|`` of the premium spread exceeds the threshold.
+
+Runs on each 1s snapshot. ``window_days`` is a calendar window over
+same-second spreads, not a tick count.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -45,11 +49,11 @@ class PairZScoreStrategy(Strategy):
         self.capital_per_side = decimal_value(capital_per_side)
         self.fund_a = str(fund_a)
         self.fund_b = str(fund_b)
-        self.window_days = int(window_days)  # last N overlapping snapshots
+        self.window_days = int(window_days)
         self.min_samples = int(min_samples)
         self.z_threshold = float(z_threshold)
         self._current_pair: tuple[str, str] | None = None
-        self._spreads: list[float] = []
+        self._spreads: list[tuple[datetime, float]] = []
         self.events: list[dict[str, Any]] = []
         self.last_status: str | None = None
         self.last_stats: dict[str, Any] | None = None
@@ -61,8 +65,21 @@ class PairZScoreStrategy(Strategy):
         prem_a = snapshot_premium(snapshot, self.fund_a)
         prem_b = snapshot_premium(snapshot, self.fund_b)
         if prem_a is not None and prem_b is not None:
-            self._spreads.append(round(float(prem_a) - float(prem_b), 6))
-        series = self._spread_series()
+            self._spreads.append(
+                (snapshot.timestamp, round(float(prem_a) - float(prem_b), 6))
+            )
+            cutoff = snapshot.timestamp - timedelta(days=self.window_days)
+            if self.window_days > 0:
+                keep = 0
+                for index, (stamp, _) in enumerate(self._spreads):
+                    if stamp >= cutoff:
+                        keep = index
+                        break
+                else:
+                    keep = len(self._spreads)
+                if keep:
+                    del self._spreads[:keep]
+        series = self._spread_series(snapshot.timestamp)
         long_px = snapshot_close(snapshot, self.fund_a)
         short_px = snapshot_close(snapshot, self.fund_b)
         stats = compute_pair_spread_stats(
@@ -127,11 +144,15 @@ class PairZScoreStrategy(Strategy):
         else:
             self._current_pair = None
 
-    def _spread_series(self) -> list[float]:
-        series = self._spreads
-        if self.window_days > 0 and len(series) > self.window_days:
-            return series[-self.window_days :]
-        return series
+    def _spread_series(self, now: datetime | None = None) -> list[float]:
+        if now is None:
+            if not self._spreads:
+                return []
+            now = self._spreads[-1][0]
+        cutoff = now - timedelta(days=self.window_days)
+        if self.window_days <= 0:
+            return [value for _, value in self._spreads]
+        return [value for stamp, value in self._spreads if stamp >= cutoff]
 
     def _emit(
         self,

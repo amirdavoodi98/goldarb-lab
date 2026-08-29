@@ -1,11 +1,13 @@
 """Bubble-rank pair rotation (gold-arbitrage ``BubbleRankStrategy``).
 
 Long the cheapest fund vs its own premium window, short the richest.
-Fills at the current snapshot (same-bar), same as Lab ``fill_mode="same_bar"``.
+Runs on each 1s snapshot (same-bar fill). ``window_days`` is a calendar
+window over those 1s premiums, not a tick count.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -22,6 +24,7 @@ from goldarb.strategies.pairs import (
     open_pair,
     pair_event,
     premiums_on_snapshot,
+    window_values,
 )
 from goldarb.strategy import Strategy, StrategyContext
 
@@ -41,11 +44,11 @@ class BubbleRankStrategy(Strategy):
         min_gap: float = BUBBLE_RANK_MIN_GAP,
     ) -> None:
         self.capital_per_side = decimal_value(capital_per_side)
-        self.window_days = int(window_days)  # last N premium observations
+        self.window_days = int(window_days)
         self.min_samples = int(min_samples)
         self.min_gap = float(min_gap)
         self._current_pair: tuple[str, str] | None = None
-        self._premiums: dict[str, list[float]] = {}
+        self._premiums: dict[str, list[tuple[datetime, float]]] = {}
         self.events: list[dict[str, Any]] = []
         self.last_ranking: dict[str, Any] | None = None
 
@@ -53,10 +56,12 @@ class BubbleRankStrategy(Strategy):
         snapshot = ctx.market
         if snapshot is None:
             return
-        append_premiums(self._premiums, snapshot)
+        window = timedelta(days=self.window_days)
+        append_premiums(self._premiums, snapshot, window=window)
         present = premiums_on_snapshot(snapshot)
+        now = snapshot.timestamp
         live_history = {
-            symbol: self._premiums[symbol]
+            symbol: window_values(self._premiums[symbol], now=now, window=window)
             for symbol in present
             if symbol in self._premiums
         }

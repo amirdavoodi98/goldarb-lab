@@ -27,8 +27,7 @@ def compute_symbol_score(
     min_samples: int = BUBBLE_RANK_MIN_SAMPLES,
     window_days: int = BUBBLE_RANK_WINDOW_DAYS,
 ) -> dict[str, Any]:
-    # ``window_days`` is last N observations (Lab daily bars ≡ calendar days).
-    values = list(series[-window_days:]) if series else []
+    values = list(series) if series else []
     n = len(values)
     current = round(values[-1], 4) if values else None
 
@@ -38,6 +37,7 @@ def compute_symbol_score(
             "avg20": None,
             "score": None,
             "sample_count": n,
+            "window_days": window_days,
             "status": "insufficient_samples",
         }
 
@@ -48,6 +48,7 @@ def compute_symbol_score(
         "avg20": avg20,
         "score": score,
         "sample_count": n,
+        "window_days": window_days,
         "status": "ok",
     }
 
