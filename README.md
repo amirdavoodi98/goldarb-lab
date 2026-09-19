@@ -422,6 +422,7 @@ Collects missing data and writes coverage reports.
 ```bash
 python examples/backtest_premium_threshold.py
 python examples/backtest_ma_band.py
+python examples/backtest_two_weeks_1s.py
 python examples/backtest_month_1s.py
 python examples/simulate_iran_session_1s.py
 python examples/backtest_bubble_rank.py
