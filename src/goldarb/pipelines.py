@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
+from .archive import read_symbol_bars
 from .data import HistoricalDataProvider, LabLiveFeed, LiveDataProvider
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
 from .execution import FeeModel, PercentFee
@@ -113,6 +115,44 @@ def iran_session_live(
             initial_cash=initial_cash,
             allow_short=allow_short,
             label=f"{strategy.name}-iran-live-{grain}",
+        ),
+        simulator=simulator,
+        fee=fee or PercentFee("0.0005"),
+    )
+
+
+def offline_backtest(
+    strategy: Strategy,
+    archive: str | Path,
+    *,
+    grain: str = BAR_GRAIN_1S,
+    fill_session: bool = True,
+    initial_cash: str = "1000000000",
+    allow_short: bool = False,
+    fee: FeeModel | None = None,
+    simulator: LocalSimulator | None = None,
+) -> RunResult:
+    """Replay a previously downloaded 1s archive with no HTTP."""
+    manifest, raw = read_symbol_bars(archive)
+    grain_key = str(manifest.get("grain") or grain)
+    provider = HistoricalDataProvider.from_symbol_bars(
+        raw,
+        ffill=True,
+        step=grain_step(grain_key),
+        session_hours=True,
+        fill_session=fill_session,
+        event_prefix=f"{grain_key}-archive",
+        lazy=True,
+    )
+    return BacktestEngine().run(
+        strategy,
+        provider,
+        RunConfig(
+            strategy_name=strategy.name,
+            strategy_version=getattr(strategy, "version", "0"),
+            initial_cash=initial_cash,
+            allow_short=allow_short,
+            label=f"{strategy.name}-{grain_key}-offline",
         ),
         simulator=simulator,
         fee=fee or PercentFee("0.0005"),
