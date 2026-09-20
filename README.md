@@ -92,6 +92,8 @@ P&L, and equity history in SQLite.
 
 Persian SDK usage (install, Strategy contract, 1s month backtest, Iran live session):
 [`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
+How to write a Strategy, set YAML config, and run a backtest:
+[`docs/strategy-backtest-guide-fa.md`](docs/strategy-backtest-guide-fa.md).
 
 To keep a Strategy environment-agnostic, prefer `BacktestEngine` /
 `LiveSimulationEngine` with a `DataProvider`. The same `Strategy` subclass runs

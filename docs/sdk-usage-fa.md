@@ -3,6 +3,8 @@
 این سند نحوهٔ کار با `goldarb-lab` را برای تیم تریدینگ شرح می‌دهد.
 نیازمندی‌ها در [`srs-sdk-v0.1.md`](srs-sdk-v0.1.md) است.
 جزئیات مچینگ سفارش در [`local-simulator-fa.md`](local-simulator-fa.md) است.
+راهنمای نوشتن Strategy، تنظیم YAML و گرفتن بک‌تست:
+[`strategy-backtest-guide-fa.md`](strategy-backtest-guide-fa.md).
 
 یک `Strategy` را یک‌بار می‌نویسید؛ همان کلاس روی بک‌تست تاریخی و پیپر لایو اجرا می‌شود.
 موتور داده و کارگزار را جدا از منطق سیگنال نگه می‌دارد.
