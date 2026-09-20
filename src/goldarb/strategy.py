@@ -57,6 +57,7 @@ class StrategyContext:
         self.config: dict[str, Any] = dict(config or {})
         self._market: MarketSnapshot | None = None
         self._clock: datetime | None = None
+        self._portfolio_cache: Portfolio | None = None
         self.signals: list[Signal] = []
         self.log: list[EngineLog] = []
 
@@ -73,9 +74,12 @@ class StrategyContext:
     def set_market(self, snapshot: MarketSnapshot) -> None:
         self._market = snapshot
         self._clock = snapshot.timestamp
+        self._portfolio_cache = None
 
     def portfolio(self) -> Portfolio:
-        return self._broker.portfolio(self.account_id)
+        if self._portfolio_cache is None:
+            self._portfolio_cache = self._broker.portfolio(self.account_id)
+        return self._portfolio_cache
 
     def positions(self) -> tuple[Position, ...]:
         return self.portfolio().positions
@@ -114,6 +118,7 @@ class StrategyContext:
             limit_price=limit_price,
             client_order_id=client_order_id,
         )
+        self._portfolio_cache = None
         self.record(
             "order",
             {
@@ -128,6 +133,7 @@ class StrategyContext:
 
     def cancel_order(self, order_id: str) -> Order:
         order = self._broker.cancel_order(self.account_id, order_id)
+        self._portfolio_cache = None
         self.record("cancel", {"order_id": order.id, "status": order.status.value})
         return order
 
@@ -175,9 +181,7 @@ class StrategyContext:
             "realized_pnl": portfolio.realized_pnl,
             "unrealized_pnl": portfolio.unrealized_pnl,
             "open_orders": len(self.open_orders()),
-            "positions": {
-                item.symbol: str(item.quantity) for item in portfolio.positions
-            },
+            "positions": {item.symbol: str(item.quantity) for item in portfolio.positions},
             "signals": len(self.signals),
         }
 

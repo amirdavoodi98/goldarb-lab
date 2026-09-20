@@ -44,6 +44,12 @@ class LocalSimulator:
 
     def __init__(self, path: str | Path) -> None:
         self._repo = SQLiteRepository(path)
+        latest = self._repo.connection.execute(
+            "SELECT timestamp FROM market_events ORDER BY timestamp DESC LIMIT 1"
+        ).fetchone()
+        self._last_timestamp = (
+            None if latest is None else datetime.fromisoformat(latest["timestamp"])
+        )
 
     def close(self) -> None:
         self._repo.close()
@@ -208,10 +214,7 @@ class LocalSimulator:
                 "SELECT 1 FROM market_events WHERE event_id=?", (snapshot.event_id,)
             ).fetchone():
                 return False
-            latest = db.execute(
-                "SELECT timestamp FROM market_events ORDER BY timestamp DESC LIMIT 1"
-            ).fetchone()
-            if latest is not None and datetime.fromisoformat(latest["timestamp"]) > timestamp:
+            if self._last_timestamp is not None and self._last_timestamp > timestamp:
                 raise ValueError("snapshot timestamps must be monotonic")
             db.execute(
                 "INSERT INTO market_events(event_id, timestamp) VALUES (?, ?)",
@@ -245,6 +248,7 @@ class LocalSimulator:
             for account in accounts:
                 self._match_account(db, account["id"], snapshot.event_id, stamp)
                 self._record_equity(db, account["id"], snapshot.event_id, stamp)
+        self._last_timestamp = timestamp
         return True
 
     def get_order(self, account_id: str, order_id: str) -> Order:

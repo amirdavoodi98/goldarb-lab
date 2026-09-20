@@ -6,12 +6,15 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
+from zoneinfo import ZoneInfo
 
 from .session import (
     ONE_SECOND,
+    SESSION_CLOSE,
+    SESSION_OPEN,
     TEHRAN,
     grain_step,
-    in_iran_session,
+    in_session,
     session_timeline,
     snapshot_from_live,
 )
@@ -83,8 +86,7 @@ class LabLiveFeed:
             payload = many(symbols, start=start, end=end, grain=grain)
             return payload if isinstance(payload, dict) else {}
         return {
-            symbol: self.candles(symbol, start=start, end=end, grain=grain)
-            for symbol in symbols
+            symbol: self.candles(symbol, start=start, end=end, grain=grain) for symbol in symbols
         }
 
     def last_prices(self) -> Any:
@@ -216,6 +218,9 @@ def snapshots_from_symbol_bars(
     session_hours: bool = True,
     fill_session: bool = False,
     event_prefix: str = "1s",
+    session_zone: ZoneInfo = TEHRAN,
+    session_open: time = SESSION_OPEN,
+    session_close: time = SESSION_CLOSE,
 ) -> list[MarketSnapshot]:
     """Align sparse per-symbol bars onto a 1s grid.
 
@@ -231,6 +236,9 @@ def snapshots_from_symbol_bars(
             session_hours=session_hours,
             fill_session=fill_session,
             event_prefix=event_prefix,
+            session_zone=session_zone,
+            session_open=session_open,
+            session_close=session_close,
         )
     )
 
@@ -243,6 +251,9 @@ def iter_symbol_bar_snapshots(
     session_hours: bool = True,
     fill_session: bool = False,
     event_prefix: str = "1s",
+    session_zone: ZoneInfo = TEHRAN,
+    session_open: time = SESSION_OPEN,
+    session_close: time = SESSION_CLOSE,
 ) -> Iterator[MarketSnapshot]:
     parsed: dict[str, dict[datetime, Quote]] = {}
     stamps: list[datetime] = []
@@ -268,6 +279,9 @@ def iter_symbol_bar_snapshots(
         session_hours=session_hours,
         fill_session=fill_session,
         ffill=ffill,
+        session_zone=session_zone,
+        session_open=session_open,
+        session_close=session_close,
     ):
         quotes: list[Quote] = []
         for symbol, bucket in parsed.items():
@@ -293,6 +307,9 @@ def _symbol_bar_timeline(
     session_hours: bool,
     fill_session: bool,
     ffill: bool,
+    session_zone: ZoneInfo = TEHRAN,
+    session_open: time = SESSION_OPEN,
+    session_close: time = SESSION_CLOSE,
 ) -> list[datetime]:
     unique = sorted({item.astimezone(UTC).replace(microsecond=0) for item in stamps})
     if not unique:
@@ -304,9 +321,14 @@ def _symbol_bar_timeline(
 
     by_day: dict[date, list[datetime]] = {}
     for stamp in unique:
-        if not in_iran_session(stamp):
+        if not in_session(
+            stamp,
+            zone=session_zone,
+            open_time=session_open,
+            close_time=session_close,
+        ):
             continue
-        by_day.setdefault(stamp.astimezone(TEHRAN).date(), []).append(stamp)
+        by_day.setdefault(stamp.astimezone(session_zone).date(), []).append(stamp)
 
     timeline: list[datetime] = []
     for day in sorted(by_day):
@@ -317,6 +339,9 @@ def _symbol_bar_timeline(
             last=max(day_stamps),
             step=step,
             fill_session=fill_session,
+            zone=session_zone,
+            open_time=session_open,
+            close_time=session_close,
         )
         timeline.extend(point.astimezone(UTC) for point in points)
     return timeline
@@ -360,8 +385,7 @@ class HistoricalDataProvider:
 
     def __init__(
         self,
-        snapshots: Sequence[MarketSnapshot]
-        | Callable[[], Iterator[MarketSnapshot]],
+        snapshots: Sequence[MarketSnapshot] | Callable[[], Iterator[MarketSnapshot]],
     ) -> None:
         if isinstance(snapshots, Sequence) and not isinstance(snapshots, (str, bytes)):
             self._snapshots: list[MarketSnapshot] = list(snapshots)
@@ -426,6 +450,9 @@ class HistoricalDataProvider:
         fill_session: bool = False,
         event_prefix: str = "1s",
         lazy: bool = True,
+        session_zone: ZoneInfo = TEHRAN,
+        session_open: time = SESSION_OPEN,
+        session_close: time = SESSION_CLOSE,
     ) -> HistoricalDataProvider:
         """Align API ``grain=1s`` bars onto a 1s Iran-session grid."""
 
@@ -437,6 +464,9 @@ class HistoricalDataProvider:
                 session_hours=session_hours,
                 fill_session=fill_session,
                 event_prefix=event_prefix,
+                session_zone=session_zone,
+                session_open=session_open,
+                session_close=session_close,
             )
 
         if lazy:
@@ -476,6 +506,9 @@ class LiveDataProvider:
         now: Callable[[], datetime] | None = None,
         on_error: Callable[[BaseException], None] | None = None,
         on_idle: Callable[[], None] | None = None,
+        session_zone: ZoneInfo = TEHRAN,
+        session_open: time = SESSION_OPEN,
+        session_close: time = SESSION_CLOSE,
     ) -> None:
         self.feed = feed
         self.symbols = tuple(symbols) if symbols is not None else (symbol,)
@@ -491,6 +524,9 @@ class LiveDataProvider:
         self._now = now
         self.on_error = on_error
         self.on_idle = on_idle
+        self.session_zone = session_zone
+        self.session_open = session_open
+        self.session_close = session_close
         self._seen: set[str] = set()
         self._bars_loaded = False
         self._polls = 0
@@ -498,7 +534,7 @@ class LiveDataProvider:
     def now(self) -> datetime:
         if self._now is not None:
             return self._now()
-        return datetime.now(TEHRAN)
+        return datetime.now(self.session_zone)
 
     def done(self) -> bool:
         if self.max_polls is not None and self._polls >= self.max_polls:
@@ -512,7 +548,7 @@ class LiveDataProvider:
         self._polls += 1
         pending: list[MarketSnapshot] = []
         clock = self.now()
-        day = self.session_day or clock.astimezone(TEHRAN).date()
+        day = self.session_day or clock.astimezone(self.session_zone).date()
         try:
             if not self._bars_loaded:
                 pending.extend(self._history_snapshots(day, before=clock))
@@ -522,7 +558,13 @@ class LiveDataProvider:
                 self.on_error(exc)
             return []
         self._bars_loaded = True
-        if live is not None and in_iran_session(live.timestamp, day=day):
+        if live is not None and in_session(
+            live.timestamp,
+            day=day,
+            zone=self.session_zone,
+            open_time=self.session_open,
+            close_time=self.session_close,
+        ):
             pending.append(live)
 
         fresh: list[MarketSnapshot] = []
@@ -570,16 +612,19 @@ class LiveDataProvider:
                 session_hours=True,
                 fill_session=False,
                 event_prefix=f"hist-{self.bar_grain}",
+                session_zone=self.session_zone,
+                session_open=self.session_open,
+                session_close=self.session_close,
             )
         )
         if not self.include_session_bars:
             snapshots = [
                 item
                 for item in snapshots
-                if item.timestamp.astimezone(TEHRAN).date() < day
+                if item.timestamp.astimezone(self.session_zone).date() < day
             ]
         if before is not None:
-            cutoff = before.astimezone(TEHRAN).replace(microsecond=0)
+            cutoff = before.astimezone(self.session_zone).replace(microsecond=0)
             snapshots = [item for item in snapshots if item.timestamp < cutoff]
         return snapshots
 
@@ -598,10 +643,7 @@ class LiveDataProvider:
                 grain=self.bar_grain,
             )
             if isinstance(payload, dict):
-                return {
-                    str(symbol): list(rows or [])
-                    for symbol, rows in payload.items()
-                }
+                return {str(symbol): list(rows or []) for symbol, rows in payload.items()}
         out: dict[str, list[dict[str, Any]]] = {}
         for symbol in self.symbols:
             out[symbol] = list(
@@ -616,9 +658,7 @@ class LiveDataProvider:
         return out
 
     def _live_snapshot(self, clock: datetime) -> MarketSnapshot | None:
-        lasts = _symbol_payload_map(
-            getattr(self.feed, "last_prices", lambda: None)()
-        )
+        lasts = _symbol_payload_map(getattr(self.feed, "last_prices", lambda: None)())
         navs = _symbol_payload_map(getattr(self.feed, "navs_live", lambda: None)())
         books = _symbol_payload_map(getattr(self.feed, "orderbooks", lambda: None)())
         quotes: list[Quote] = []
@@ -640,10 +680,8 @@ class LiveDataProvider:
                 quotes.append(quote)
         if not quotes:
             return None
-        stamp = clock.astimezone(TEHRAN).replace(microsecond=0)
-        fingerprint = ",".join(
-            f"{quote.symbol}:{quote.last}:{quote.premium}" for quote in quotes
-        )
+        stamp = clock.astimezone(self.session_zone).replace(microsecond=0)
+        fingerprint = ",".join(f"{quote.symbol}:{quote.last}:{quote.premium}" for quote in quotes)
         return MarketSnapshot(
             event_id=f"live:{stamp.isoformat()}:{fingerprint}",
             timestamp=stamp,

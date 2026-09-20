@@ -27,23 +27,41 @@ def grain_step(grain: str) -> timedelta:
     return ONE_SECOND
 
 
-def session_bounds(day: date | None = None) -> tuple[datetime, datetime]:
+def session_bounds(
+    day: date | None = None,
+    *,
+    zone: ZoneInfo = TEHRAN,
+    open_time: time = SESSION_OPEN,
+    close_time: time = SESSION_CLOSE,
+) -> tuple[datetime, datetime]:
     """Return [12:00, 17:00] Asia/Tehran for ``day`` (default: today in Tehran)."""
-    local_day = day or datetime.now(TEHRAN).date()
-    start = datetime.combine(local_day, SESSION_OPEN, tzinfo=TEHRAN)
-    end = datetime.combine(local_day, SESSION_CLOSE, tzinfo=TEHRAN)
+    local_day = day or datetime.now(zone).date()
+    start = datetime.combine(local_day, open_time, tzinfo=zone)
+    end = datetime.combine(local_day, close_time, tzinfo=zone)
     return start, end
 
 
-def in_iran_session(timestamp: datetime, *, day: date | None = None) -> bool:
-    """True when ``timestamp`` falls in 12:00–17:00 Iran time, inclusive of 17:00."""
+def in_session(
+    timestamp: datetime,
+    *,
+    day: date | None = None,
+    zone: ZoneInfo = TEHRAN,
+    open_time: time = SESSION_OPEN,
+    close_time: time = SESSION_CLOSE,
+) -> bool:
+    """True when ``timestamp`` falls inside the configured session."""
     if timestamp.tzinfo is None:
         raise ValueError("timestamp must be timezone-aware")
-    local = timestamp.astimezone(TEHRAN)
+    local = timestamp.astimezone(zone)
     if day is not None and local.date() != day:
         return False
-    start, end = session_bounds(local.date())
+    start, end = session_bounds(local.date(), zone=zone, open_time=open_time, close_time=close_time)
     return start <= local <= end
+
+
+def in_iran_session(timestamp: datetime, *, day: date | None = None) -> bool:
+    """Backward-compatible Iran cash-session predicate."""
+    return in_session(timestamp, day=day)
 
 
 def session_timeline(
@@ -53,20 +71,23 @@ def session_timeline(
     last: datetime | None = None,
     step: timedelta = ONE_SECOND,
     fill_session: bool = False,
+    zone: ZoneInfo = TEHRAN,
+    open_time: time = SESSION_OPEN,
+    close_time: time = SESSION_CLOSE,
 ) -> list[datetime]:
     """1s (or ``step``) timestamps for one Iran cash session.
 
     ``fill_session=True`` covers 12:00–17:00 inclusive. Otherwise the grid
     spans only ``[first, last]`` clipped to the session.
     """
-    open_at, close_at = session_bounds(day)
+    open_at, close_at = session_bounds(day, zone=zone, open_time=open_time, close_time=close_time)
     if fill_session:
         start, end = open_at, close_at
     else:
         if first is None or last is None:
             return []
-        start = max(first.astimezone(TEHRAN), open_at)
-        end = min(last.astimezone(TEHRAN), close_at)
+        start = max(first.astimezone(zone), open_at)
+        end = min(last.astimezone(zone), close_at)
     start = start.replace(microsecond=0)
     end = end.replace(microsecond=0)
     if step <= timedelta(0) or start > end:
@@ -98,11 +119,15 @@ def snapshot_from_live(
     clock = now or datetime.now(TEHRAN)
     timestamp = _live_timestamp(last_price, orderbook, clock)
     stale = str(last_price.get("status") or "") == "stale"
-    last = None if stale else _positive_decimal(
-        last_price.get("last_price")
-        or last_price.get("display_price")
-        or last_price.get("close_price")
-        or last_price.get("close")
+    last = (
+        None
+        if stale
+        else _positive_decimal(
+            last_price.get("last_price")
+            or last_price.get("display_price")
+            or last_price.get("close_price")
+            or last_price.get("close")
+        )
     )
     book = orderbook or {}
     bid = _positive_decimal(book.get("best_bid"))

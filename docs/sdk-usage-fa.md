@@ -48,6 +48,53 @@ with LabClient.from_env() as client:
 
 یونیورس جفت‌ها ۳۰ صندوق طلا است: `GOLD_FUND_SYMBOLS`.
 
+### دانلود incremental و آرشیو نسخه‌دار
+
+```python
+from goldarb import LabClient, download_symbol_bars
+
+with LabClient.from_env() as client:
+    download_symbol_bars(
+        client,
+        "archive/1s-14d",
+        days=14,
+        grain="1s",
+        incremental=True,
+    )
+```
+
+اجرای مجدد فقط روزهای موجودنبودۀ هر نماد را دریافت می‌کند. `manifest.json`
+شامل نسخه schema، بازه، source، checksum، تعداد ردیف و گزارش روزهای فاقد داده است.
+آرشیوهای JSONL قدیمی همچنان قابل خواندن‌اند. برای Parquet، extra مربوط را نصب و
+`format="parquet"` ارسال کنید:
+
+```bash
+pip install -e ".[parquet]"
+```
+
+## اجرای مبتنی بر کانفیگ
+
+`AppConfig` فایل JSON، TOML و YAML را می‌خواند. برای YAML:
+
+```bash
+pip install -e ".[yaml]"
+python examples/run_from_config.py examples/runtime.example.yaml
+```
+
+```python
+from goldarb import AppConfig, BubbleSignStrategy, StrategyRunner
+
+config = AppConfig.from_file("examples/runtime.example.yaml")
+strategy = BubbleSignStrategy(**config.strategy.params)
+result = StrategyRunner.from_config(config).run(strategy)
+```
+
+حالت‌های معتبر `runtime.mode` عبارت‌اند از `backtest`،
+`offline_backtest`، `live_paper_local` و `live_paper_remote`. با تغییر mode و
+data provider، کد Strategy تغییر نمی‌کند. providerهای تاریخی `goldarb_api`،
+`jsonl`، `parquet` و `archive` هستند. توکن در فایل کانفیگ قرار نمی‌گیرد و از
+`GOLDARB_TOKEN` خوانده می‌شود.
+
 ## قرارداد Strategy
 
 استراتژی فقط با `StrategyContext` حرف می‌زند: بازار جاری، پورتفوی، ثبت سفارش.

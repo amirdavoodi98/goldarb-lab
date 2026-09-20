@@ -15,11 +15,13 @@ from uuid import uuid4
 
 from .data import DataProvider
 from .execution import (
+    Broker,
+    ExecutionDriver,
     FeeModel,
     LatencyModel,
+    LocalFeedExecution,
     NoLatency,
     NoSlippage,
-    PaperBroker,
     PercentFee,
     SlippageModel,
 )
@@ -138,12 +140,8 @@ def compute_metrics(
     filled = [order for order in orders if order.status == OrderStatus.FILLED]
     n_orders = len(orders)
     fill_rate = (Decimal(len(filled)) / Decimal(n_orders)) if n_orders else ZERO
-    total_pnl = (
-        portfolio.realized_pnl + portfolio.unrealized_pnl - portfolio.fees_paid
-    )
-    total_return = (
-        (portfolio.equity - initial_cash) / initial_cash if initial_cash else ZERO
-    )
+    total_pnl = portfolio.realized_pnl + portfolio.unrealized_pnl - portfolio.fees_paid
+    total_return = (portfolio.equity - initial_cash) / initial_cash if initial_cash else ZERO
     return Metrics(
         total_return=total_return,
         total_pnl=total_pnl,
@@ -167,11 +165,12 @@ class SimulationLoop:
     def __init__(
         self,
         *,
-        broker: PaperBroker,
+        broker: Broker,
         account_id: str,
         strategy: Strategy,
         slippage: SlippageModel,
         latency: LatencyModel,
+        execution: ExecutionDriver | None = None,
         config: dict[str, Any] | None = None,
         on_event: OnEvent | None = None,
     ) -> None:
@@ -180,9 +179,11 @@ class SimulationLoop:
         self.strategy = strategy
         self.slippage = slippage
         self.latency = latency
+        self.execution = execution or LocalFeedExecution()
         self.on_event = on_event
         self.ctx = StrategyContext(broker, account_id, config=config)
         self.strategy.on_start(self.ctx)
+        self._seen_fill_ids = {fill.id for fill in self.broker.list_fills(self.account_id)}
 
     def process(self, snapshot: MarketSnapshot) -> None:
         self.ctx.set_market(snapshot)
@@ -194,12 +195,10 @@ class SimulationLoop:
             },
         )
         execution = self.latency.apply_snapshot(self.slippage.apply_snapshot(snapshot))
-        before = {fill.id for fill in self.broker.list_fills(self.account_id)}
-        self.broker.feed(execution)
-        self._notify_fills(before)
-        before = {fill.id for fill in self.broker.list_fills(self.account_id)}
+        self.execution.on_market(self.broker, execution)
+        self._notify_new_fills()
         self.strategy.on_market_data(self.ctx)
-        self._notify_fills(before)
+        self._notify_new_fills()
         if self.on_event is not None:
             self.on_event("tick", self.ctx)
 
@@ -208,10 +207,11 @@ class SimulationLoop:
         if self.on_event is not None:
             self.on_event("stop", self.ctx)
 
-    def _notify_fills(self, before: set[str]) -> None:
+    def _notify_new_fills(self) -> None:
         for fill in self.broker.list_fills(self.account_id):
-            if fill.id in before:
+            if fill.id in self._seen_fill_ids:
                 continue
+            self._seen_fill_ids.add(fill.id)
             self.ctx.record(
                 "fill",
                 {
@@ -234,18 +234,17 @@ class SimulationEngine:
         provider: DataProvider,
         config: RunConfig,
         *,
-        simulator: LocalSimulator | None = None,
+        simulator: Broker | None = None,
         fee: FeeModel | None = None,
         slippage: SlippageModel | None = None,
         latency: LatencyModel | None = None,
+        execution: ExecutionDriver | None = None,
         on_event: OnEvent | None = None,
     ) -> RunResult:
         fee_model = fee or PercentFee(config.fee_rate or "0.0005")
         slippage_model = slippage or NoSlippage()
         latency_model = latency or NoLatency()
-        recorded = config.snapshot(
-            fee=fee_model, slippage=slippage_model, latency=latency_model
-        )
+        recorded = config.snapshot(fee=fee_model, slippage=slippage_model, latency=latency_model)
         own = False
         broker = simulator
         if broker is None:
@@ -266,9 +265,7 @@ class SimulationEngine:
             ctx_config = {
                 "run_id": recorded.run_id,
                 "strategy_name": strategy.name,
-                "strategy_version": getattr(
-                    strategy, "version", recorded.strategy_version
-                ),
+                "strategy_version": getattr(strategy, "version", recorded.strategy_version),
                 **recorded.strategy_config,
             }
             loop = SimulationLoop(
@@ -277,6 +274,7 @@ class SimulationEngine:
                 strategy=strategy,
                 slippage=slippage_model,
                 latency=latency_model,
+                execution=execution,
                 config=ctx_config,
                 on_event=on_event,
             )

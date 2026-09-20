@@ -17,6 +17,8 @@ dependencies = [
 
 [project.optional-dependencies]
 pandas = ["pandas>=2.0"]
+parquet = ["pyarrow>=15.0"]
+yaml = ["PyYAML>=6.0"]
 dev = ["pytest>=8.0", "respx>=0.21"]
 
 [project.urls]
