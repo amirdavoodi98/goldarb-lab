@@ -159,6 +159,23 @@ Persian usage: [`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
 Requirements: [`docs/srs-sdk-v0.1.md`](docs/srs-sdk-v0.1.md).
 Full Persian simulator guide: [`docs/local-simulator-fa.md`](docs/local-simulator-fa.md)
 
+## Configuration-driven runtime
+
+The data source, runtime mode, broker behavior, fee, slippage, latency, and
+session window can be selected without changing Strategy code:
+
+```python
+from goldarb import AppConfig, BubbleSignStrategy, StrategyRunner
+
+config = AppConfig.from_file("examples/runtime.example.yaml")
+strategy = BubbleSignStrategy(**config.strategy.params)
+result = StrategyRunner.from_config(config).run(strategy)
+```
+
+Install `.[yaml]` for YAML configuration and `.[parquet]` for partitioned
+Parquet archives. Credentials remain in `GOLDARB_TOKEN` / environment variables,
+not in configuration files.
+
 ```python
 from datetime import UTC, datetime
 from decimal import Decimal

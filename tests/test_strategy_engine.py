@@ -9,8 +9,9 @@ from zoneinfo import ZoneInfo
 from goldarb.data import HistoricalDataProvider, LiveDataProvider
 from goldarb.engine import BacktestEngine, LiveSimulationEngine, RunConfig
 from goldarb.execution import FixedLatency, FixedSlippage, PercentFee, PercentSlippage
-from goldarb.simulation import LocalSimulator, OrderStatus, Side
+from goldarb.simulation import LocalSimulator, MarketSnapshot, OrderStatus, Portfolio, Side
 from goldarb.strategies import MaBandStrategy
+from goldarb.strategy import StrategyContext
 
 TEHRAN = ZoneInfo("Asia/Tehran")
 ROUND_TRIP = ("100", "100", "100", "97", "97", "103")
@@ -35,6 +36,37 @@ class FakeLiveFeed:
     def orderbook(self, symbol):
         del symbol
         return dict(self.book)
+
+
+def test_strategy_context_caches_portfolio_within_market_event():
+    class CountingBroker:
+        def __init__(self):
+            self.calls = 0
+
+        def portfolio(self, account_id):
+            self.calls += 1
+            return Portfolio(
+                account_id=account_id,
+                cash=Decimal("100"),
+                equity=Decimal("100"),
+                fees_paid=Decimal(0),
+                realized_pnl=Decimal(0),
+                unrealized_pnl=Decimal(0),
+                positions=(),
+                as_of=None,
+            )
+
+    broker = CountingBroker()
+    ctx = StrategyContext(broker, "account")
+    first = MarketSnapshot(event_id="1", timestamp=datetime.now(TEHRAN), quotes=())
+    second = MarketSnapshot(event_id="2", timestamp=datetime.now(TEHRAN), quotes=())
+    ctx.set_market(first)
+    assert ctx.held("طلا") == 0
+    assert ctx.held("عیار") == 0
+    assert broker.calls == 1
+    ctx.set_market(second)
+    assert ctx.held("طلا") == 0
+    assert broker.calls == 2
 
 
 def test_backtest_engine_ma_band_round_trip(tmp_path):
@@ -122,9 +154,7 @@ def test_fixed_latency_shifts_execution_clock(tmp_path):
         latency=FixedLatency(250),
     )
     origin = datetime.fromisoformat(result.fills[0].filled_at)
-    expected = datetime(2026, 8, 29, 9, 3, tzinfo=origin.tzinfo) + timedelta(
-        milliseconds=250
-    )
+    expected = datetime(2026, 8, 29, 9, 3, tzinfo=origin.tzinfo) + timedelta(milliseconds=250)
     assert origin == expected
     assert result.config.latency_config == {"milliseconds": "250"}
 

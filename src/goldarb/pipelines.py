@@ -7,12 +7,13 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from .archive import read_symbol_bars
+from .archive import dataset_store
 from .data import HistoricalDataProvider, LabLiveFeed, LiveDataProvider
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
 from .execution import FeeModel, PercentFee
 from .session import TEHRAN, grain_step, session_bounds
 from .simulation.local import LocalSimulator
+from .sources import ArchiveDatasetSource
 from .strategy import Strategy
 from .universe import GOLD_FUND_SYMBOLS
 
@@ -133,16 +134,15 @@ def offline_backtest(
     simulator: LocalSimulator | None = None,
 ) -> RunResult:
     """Replay a previously downloaded 1s archive with no HTTP."""
-    manifest, raw = read_symbol_bars(archive)
+    source = ArchiveDatasetSource(dataset_store(archive))
+    manifest = source.store.read_manifest()
     grain_key = str(manifest.get("grain") or grain)
-    provider = HistoricalDataProvider.from_symbol_bars(
-        raw,
-        ffill=True,
-        step=grain_step(grain_key),
-        session_hours=True,
+    symbols = tuple(str(item) for item in manifest.get("symbols", ()))
+    provider = source.provider(
+        symbols,
+        grain=grain_key,
         fill_session=fill_session,
-        event_prefix=f"{grain_key}-archive",
-        lazy=True,
+        session_hours=True,
     )
     return BacktestEngine().run(
         strategy,

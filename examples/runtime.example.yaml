@@ -1,0 +1,37 @@
+data:
+  provider: archive
+  source: archive/1s-14d
+  dataset: fund-bars
+  symbols: ["طلا", "عیار"]
+  grain: 1s
+  start: "2026-09-15"
+  end: "2026-09-15"
+  fill_session: false
+
+runtime:
+  mode: offline_backtest
+  initial_cash: "1000000000"
+  allow_short: false
+  database: ":memory:"
+
+session:
+  timezone: Asia/Tehran
+  start: "12:00:00"
+  end: "17:00:00"
+  poll_seconds: 1.0
+
+strategy:
+  name: bubble_sign
+  params:
+    quantity: "1"
+
+fee:
+  name: PercentFee
+  params:
+    fee_rate: "0.0005"
+
+slippage:
+  name: NoSlippage
+
+latency:
+  name: NoLatency

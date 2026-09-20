@@ -11,7 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from decimal import Decimal
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from .simulation.engine import ZERO, fee_for
 from .simulation.models import (
@@ -30,6 +30,17 @@ from .simulation.models import (
 class Broker(Protocol):
     """Order and portfolio surface shared by local and remote paper brokers."""
 
+    def create_account(
+        self,
+        *,
+        initial_cash: Decimal | float | str,
+        label: str = "",
+        fee_rate: Decimal | float | str = "0.0005",
+        allow_short: bool = False,
+    ) -> Any: ...
+
+    def get_account(self, account_id: str) -> Any: ...
+
     def submit_order(
         self,
         account_id: str,
@@ -44,13 +55,13 @@ class Broker(Protocol):
 
     def cancel_order(self, account_id: str, order_id: str) -> Order: ...
 
-    def get_order(self, account_id: str, order_id: str) -> Order: ...
-
     def list_orders(self, account_id: str) -> list[Order]: ...
 
     def list_fills(self, account_id: str) -> list[Fill]: ...
 
     def portfolio(self, account_id: str) -> Portfolio: ...
+
+    def equity_history(self, account_id: str) -> list[dict[str, Any]]: ...
 
 
 @runtime_checkable
@@ -60,6 +71,36 @@ class PaperBroker(Broker, Protocol):
     def feed(self, snapshot: MarketSnapshot) -> bool: ...
 
     def equity_history(self, account_id: str) -> list[dict[str, str]]: ...
+
+
+class ExecutionDriver(Protocol):
+    """Deliver market events according to the broker's matching ownership."""
+
+    name: str
+
+    def on_market(self, broker: Broker, snapshot: MarketSnapshot) -> None: ...
+
+
+@dataclass(frozen=True)
+class LocalFeedExecution:
+    """Feed snapshots to an SDK-side paper matcher."""
+
+    name: str = "LocalFeedExecution"
+
+    def on_market(self, broker: Broker, snapshot: MarketSnapshot) -> None:
+        if not isinstance(broker, PaperBroker):
+            raise TypeError("local execution requires a PaperBroker with feed()")
+        broker.feed(snapshot)
+
+
+@dataclass(frozen=True)
+class ServerSideExecution:
+    """Server owns matching; client market events only drive the Strategy."""
+
+    name: str = "ServerSideExecution"
+
+    def on_market(self, broker: Broker, snapshot: MarketSnapshot) -> None:
+        del broker, snapshot
 
 
 class FeeModel(Protocol):
@@ -154,9 +195,7 @@ def _slip_quote(
     return replace(quote, bid=slipped_bid, ask=slipped_ask)
 
 
-def _map_quotes(
-    snapshot: MarketSnapshot, mapper: Callable[[Quote], Quote]
-) -> MarketSnapshot:
+def _map_quotes(snapshot: MarketSnapshot, mapper: Callable[[Quote], Quote]) -> MarketSnapshot:
     return replace(
         snapshot,
         quotes=tuple(mapper(quote) for quote in snapshot.quotes),

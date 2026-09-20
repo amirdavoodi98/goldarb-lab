@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS market_events (
     event_id TEXT PRIMARY KEY,
     timestamp TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS sim_market_events_timestamp_idx
+    ON market_events(timestamp DESC);
 CREATE TABLE IF NOT EXISTS equity_points (
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     event_id TEXT NOT NULL,
@@ -88,6 +90,8 @@ CREATE TABLE IF NOT EXISTS equity_points (
     unrealized_pnl TEXT NOT NULL,
     PRIMARY KEY(account_id, event_id)
 );
+CREATE INDEX IF NOT EXISTS sim_equity_points_history_idx
+    ON equity_points(account_id, recorded_at, event_id);
 """
 
 
@@ -100,6 +104,7 @@ class SQLiteRepository:
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys=ON")
         self.connection.execute("PRAGMA journal_mode=WAL")
+        self.connection.execute("PRAGMA synchronous=NORMAL")
         self.connection.execute("PRAGMA busy_timeout=30000")
         self._initialize()
 
