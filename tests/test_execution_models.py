@@ -8,10 +8,14 @@ from decimal import Decimal
 from goldarb.execution import (
     FixedLatency,
     FixedSlippage,
+    LocalFeedExecution,
+    LocalMarketIngress,
     NoLatency,
+    NoOpMarketIngress,
     NoSlippage,
     PercentFee,
     PercentSlippage,
+    ServerSideExecution,
 )
 from goldarb.simulation.engine import fee_for
 from goldarb.simulation.models import MarketSnapshot, Quote
@@ -62,6 +66,12 @@ def test_percent_slippage_synthesizes_bid_ask_from_last():
     assert quote.last == Decimal("100")
 
 
+def test_noop_market_ingress_alias():
+    assert NoOpMarketIngress is ServerSideExecution
+    assert LocalMarketIngress().name == "LocalMarketIngress"
+    assert NoLatency().submit_delay().total_seconds() == 0
+
+
 def test_fixed_latency_shifts_timestamp_only():
     snapshot = _snapshot()
     delayed = FixedLatency(100).apply_snapshot(snapshot)
@@ -69,3 +79,4 @@ def test_fixed_latency_shifts_timestamp_only():
     assert delayed.event_id == snapshot.event_id
     assert delayed.quotes == snapshot.quotes
     assert NoLatency().apply_snapshot(snapshot) is snapshot
+

@@ -153,9 +153,11 @@ def test_fixed_latency_shifts_execution_clock(tmp_path):
         fee=PercentFee("0"),
         latency=FixedLatency(250),
     )
+    # Buy activates on the next bar after the signal (SubmitLatency < bar step).
     origin = datetime.fromisoformat(result.fills[0].filled_at)
-    expected = datetime(2026, 8, 29, 9, 3, tzinfo=origin.tzinfo) + timedelta(milliseconds=250)
-    assert origin == expected
+    signal_bar = datetime(2026, 8, 29, 9, 3, tzinfo=origin.tzinfo)
+    assert origin == signal_bar + timedelta(minutes=1)
+    assert len(result.fills) == 2
     assert result.config.latency_config == {"milliseconds": "250"}
 
 

@@ -23,7 +23,12 @@ from .simulation.models import (
     Side,
 )
 
-_OPEN = (OrderStatus.OPEN, OrderStatus.PARTIALLY_FILLED)
+_OPEN = (
+    OrderStatus.OPEN,
+    OrderStatus.ACCEPTED,
+    OrderStatus.PARTIALLY_FILLED,
+    OrderStatus.CANCEL_PENDING,
+)
 
 
 @dataclass(frozen=True)

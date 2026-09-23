@@ -29,6 +29,26 @@ class FakeHttp:
             }
         raise AssertionError(path)
 
+    def get_json(self, path: str) -> Any:
+        self.calls.append(("GET", path, None))
+        if path.endswith("/fills/"):
+            return {
+                "results": [
+                    {
+                        "id": "fill-1",
+                        "order_id": "order-1",
+                        "market_event_id": "m1",
+                        "quantity": "1",
+                        "price": "101",
+                        "fee": "0",
+                        "filled_at": "2026-08-26T09:00:00+00:00",
+                    }
+                ]
+            }
+        if path.endswith("/orders/"):
+            return {"results": []}
+        raise AssertionError(path)
+
 
 def test_remote_submit_order_uses_typed_contract():
     http = FakeHttp()
@@ -42,16 +62,10 @@ def test_remote_submit_order_uses_typed_contract():
     )
     assert order.status == OrderStatus.FILLED
     assert order.quantity == Decimal(1)
-    assert http.calls == [
-        (
-            "POST",
-            "/api/v1/simulation/accounts/account-1/orders/",
-            {
-                "client_order_id": "client-1",
-                "symbol": "طلا",
-                "side": "BUY",
-                "quantity": "1",
-                "order_type": "MARKET",
-            },
-        )
-    ]
+    assert ("POST", "/api/v1/simulation/accounts/account-1/orders/", {
+        "client_order_id": "client-1",
+        "symbol": "طلا",
+        "side": "BUY",
+        "quantity": "1",
+        "order_type": "MARKET",
+    }) in http.calls

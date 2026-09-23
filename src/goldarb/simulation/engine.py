@@ -27,10 +27,14 @@ class PositionResult:
     realized_delta: Decimal
 
 
-def _floor_quantity(value: Decimal) -> Decimal:
+def floor_quantity(value: Decimal) -> Decimal:
     if value <= ZERO:
         return ZERO
     return value.quantize(QUANTITY_QUANTUM, rounding=ROUND_DOWN)
+
+
+# Backward-compatible private alias.
+_floor_quantity = floor_quantity
 
 
 def match_order(
