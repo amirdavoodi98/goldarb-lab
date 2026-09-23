@@ -1,6 +1,6 @@
-"""Paper-simulate a pair strategy for the 5-hour Iran cash session at 1s.
+"""Paper-simulate a pair strategy for the 6-hour Iran cash session at 1s.
 
-Waits until 12:00 Tehran if needed, polls every second until 17:00.
+Waits until 12:00 Tehran if needed, polls every second until 18:00.
 Requires GOLDARB_BASE_URL + GOLDARB_TOKEN (or username/password).
 
     python examples/simulate_iran_session_1s.py
@@ -21,7 +21,7 @@ from goldarb import (
     iran_session_live,
 )
 from goldarb.execution import PercentFee
-from goldarb.session import TEHRAN, session_bounds
+from goldarb.session import TEHRAN, is_iran_trading_day, session_bounds
 from goldarb.simulation import LocalSimulator
 from goldarb.universe import GOLD_FUND_SYMBOLS
 
@@ -81,8 +81,10 @@ def main() -> int:
         f"Iran session {open_at.strftime('%Y-%m-%d %H:%M')}–{close_at.strftime('%H:%M')} "
         f"poll={POLL_SECONDS}s lookback={LOOKBACK_DAYS}d symbols={len(GOLD_FUND_SYMBOLS)}"
     )
+    if not is_iran_trading_day(open_at.date()):
+        raise SystemExit("today is not a gold-fund trading day (Saturday–Wednesday)")
     if now > close_at:
-        raise SystemExit("today's 12:00–17:00 session has already closed")
+        raise SystemExit("today's 12:00–18:00 session has already closed")
     _wait_for_open(open_at)
     if DB_PATH.exists():
         DB_PATH.unlink()

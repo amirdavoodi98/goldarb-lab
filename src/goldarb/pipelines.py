@@ -36,8 +36,8 @@ def month_backtest(
 ) -> RunResult:
     """Replay the last ``days`` of ``grain=1s`` Iran-session bars.
 
-    ``fill_session=True`` emits every second from 12:00–17:00 on each day
-    that has data so the strategy truly runs at 1s.
+    ``fill_session=True`` emits every second from 12:00–18:00 on each
+    Saturday–Wednesday that has data so the strategy truly runs at 1s.
     """
     universe = tuple(symbols) if symbols is not None else GOLD_FUND_SYMBOLS
     last = end or datetime.now(TEHRAN).date()
@@ -87,7 +87,7 @@ def iran_session_live(
     sleep: Any = None,
     now: Any = None,
 ) -> RunResult:
-    """Paper-trade through today's 12:00–17:00 Tehran session at 1s polls.
+    """Paper-trade through today's 12:00–18:00 Tehran session at 1s polls.
 
     ``lookback_days`` replays recent 1s session bars first so pair windows
     are warm before live ticks. After ``month_backtest`` on the same strategy

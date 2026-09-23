@@ -105,7 +105,7 @@ class RuntimeConfig:
 class SessionConfig:
     timezone: str = "Asia/Tehran"
     start: str = "12:00:00"
-    end: str = "17:00:00"
+    end: str = "18:00:00"
     poll_seconds: float = 1.0
     lookback_days: int = 0
     include_session_bars: bool = False
@@ -120,7 +120,7 @@ class SessionConfig:
         return cls(
             timezone=str(item.get("timezone") or "Asia/Tehran"),
             start=str(item.get("start") or "12:00:00"),
-            end=str(item.get("end") or "17:00:00"),
+            end=str(item.get("end") or "18:00:00"),
             poll_seconds=poll,
             lookback_days=max(0, int(item.get("lookback_days", 0))),
             include_session_bars=bool(item.get("include_session_bars", False)),

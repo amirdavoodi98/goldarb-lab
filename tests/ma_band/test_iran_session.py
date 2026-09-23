@@ -1,4 +1,4 @@
-"""Session-window tests: Iran 12:00–17:00 feeding LocalSimulator."""
+"""Session-window tests: Iran 12:00–18:00 Saturday–Wednesday feeding LocalSimulator."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from session import (
     filter_session_snapshots,
     format_tick,
     in_iran_session,
+    is_iran_trading_day,
     session_bounds,
     snapshot_from_live,
     tick_record,
@@ -22,12 +23,12 @@ from goldarb.simulation import LocalSimulator, Side
 ROUND_TRIP = ("100", "100", "100", "97", "97", "103")
 
 
-def test_session_bounds_are_noon_to_five_tehran():
+def test_session_bounds_are_noon_to_six_tehran():
     start, end = session_bounds(datetime(2026, 8, 29, tzinfo=TEHRAN).date())
     assert start.hour == 12 and start.minute == 0
-    assert end.hour == 17 and end.minute == 0
+    assert end.hour == 18 and end.minute == 0
     assert start.tzinfo == TEHRAN
-    assert (end - start) == timedelta(hours=5)
+    assert (end - start) == timedelta(hours=6)
 
 
 def test_in_iran_session_accepts_utc_equivalent():
@@ -36,8 +37,20 @@ def test_in_iran_session_accepts_utc_equivalent():
     assert utc.hour == 8 and utc.minute == 30
     assert in_iran_session(utc)
     assert not in_iran_session(datetime(2026, 8, 29, 11, 59, tzinfo=TEHRAN))
-    assert in_iran_session(datetime(2026, 8, 29, 17, 0, tzinfo=TEHRAN))
-    assert not in_iran_session(datetime(2026, 8, 29, 17, 0, 1, tzinfo=TEHRAN))
+    assert in_iran_session(datetime(2026, 8, 29, 18, 0, tzinfo=TEHRAN))
+    assert not in_iran_session(datetime(2026, 8, 29, 18, 0, 1, tzinfo=TEHRAN))
+
+
+def test_gold_fund_session_is_saturday_to_wednesday():
+    saturday = datetime(2026, 8, 29, tzinfo=TEHRAN).date()
+    thursday = datetime(2026, 8, 27, tzinfo=TEHRAN).date()
+    friday = datetime(2026, 8, 28, tzinfo=TEHRAN).date()
+    assert is_iran_trading_day(saturday)
+    assert not is_iran_trading_day(thursday)
+    assert not is_iran_trading_day(friday)
+    assert in_iran_session(datetime(2026, 8, 29, 13, 0, tzinfo=TEHRAN))
+    assert not in_iran_session(datetime(2026, 8, 27, 13, 0, tzinfo=TEHRAN))
+    assert not in_iran_session(datetime(2026, 8, 28, 13, 0, tzinfo=TEHRAN))
 
 
 def test_filter_drops_bars_outside_today_session():

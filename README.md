@@ -118,7 +118,7 @@ The same engines run Lab pair strategies on **1s** snapshots covering the
 full gold-fund universe. Both need `allow_short=True` and `premium` (or close+NAV).
 `window_days` is a calendar window over those 1s premiums, not a tick count.
 
-**Past-month backtest then 5-hour Iran live paper session:**
+**Past-month backtest then 6-hour Iran live paper session:**
 
 ```python
 from goldarb import BubbleRankStrategy, LabClient, iran_session_live, month_backtest
@@ -132,8 +132,8 @@ with LabClient.from_env() as client:
 ```
 
 `month_backtest` fetches `grain=1s` for all funds and emits every second of
-12:00–17:00 Tehran (`fill_session=True`). `iran_session_live` polls the
-universe every second until session close (5 hours). Keep the same strategy
+12:00–18:00 Tehran, Saturday–Wednesday (`fill_session=True`). `iran_session_live` polls the
+universe every second until session close (6 hours). Keep the same strategy
 instance so the month-long premium window stays warm; pass `lookback_days=0`
 so live does not replay history the backtest already consumed. For a live-only
 cold start, use `lookback_days=20` instead.

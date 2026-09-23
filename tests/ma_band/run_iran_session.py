@@ -1,4 +1,4 @@
-"""Run the MA-band strategy during today's Iran cash session (12:00–17:00).
+"""Run the MA-band strategy during today's Iran cash session (12:00–18:00).
 
 This file is a runner only: data comes from ``LiveDataProvider``, decisions
 from ``MaBandStrategy``, and fills from ``LiveSimulationEngine``.
@@ -14,7 +14,7 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
-from session import TEHRAN, format_tick, session_bounds, tick_record
+from session import TEHRAN, format_tick, is_iran_trading_day, session_bounds, tick_record
 
 from goldarb import LabClient
 from goldarb.data import LabLiveFeed, LiveDataProvider
@@ -89,8 +89,10 @@ def main() -> None:
         f"{TEHRAN.key}  now={now.strftime('%H:%M:%S')}  symbol={SYMBOL}  "
         f"window={WINDOW}  band={BUY_BAND}/{SELL_BAND}"
     )
+    if not is_iran_trading_day(start.date()):
+        raise SystemExit("today is not a gold-fund trading day (Saturday–Wednesday)")
     if now > end:
-        raise SystemExit("today's 12:00–17:00 session has already closed")
+        raise SystemExit("today's 12:00–18:00 session has already closed")
 
     _wait_for_open(start)
     client = _client()

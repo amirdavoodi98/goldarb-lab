@@ -15,6 +15,7 @@ from .session import (
     TEHRAN,
     grain_step,
     in_session,
+    is_iran_trading_day,
     session_timeline,
     snapshot_from_live,
 )
@@ -225,8 +226,8 @@ def snapshots_from_symbol_bars(
     """Align sparse per-symbol bars onto a 1s grid.
 
     With ``session_hours=True`` (default) each Iran session day is a separate
-    grid so nights and weekends are not filled. ``fill_session=True`` covers
-    the full 12:00–17:00 window on every day that has data.
+    grid so nights, Thursday, and Friday are not filled. ``fill_session=True`` covers
+    the full 12:00–18:00 window on every Saturday–Wednesday that has data.
     """
     return list(
         iter_symbol_bar_snapshots(
@@ -540,6 +541,10 @@ class LiveDataProvider:
         if self.max_polls is not None and self._polls >= self.max_polls:
             return True
         if self.stop_at is not None and self.now() > self.stop_at:
+            return True
+        clock = self.now()
+        day = self.session_day or clock.astimezone(self.session_zone).date()
+        if self._bars_loaded and not is_iran_trading_day(day):
             return True
         return False
 
