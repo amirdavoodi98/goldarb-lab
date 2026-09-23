@@ -1,12 +1,16 @@
-"""Typed contracts shared by local and remote paper simulators."""
+"""Typed domain contracts for local/remote paper simulation."""
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
+
+
+class DomainError(ValueError):
+    """Invalid domain transition or invariant violation."""
 
 
 class Side(StrEnum):
@@ -19,12 +23,51 @@ class OrderType(StrEnum):
     LIMIT = "LIMIT"
 
 
+class TimeInForce(StrEnum):
+    DAY = "DAY"
+    IOC = "IOC"
+    FOK = "FOK"
+    GTC = "GTC"
+
+
 class OrderStatus(StrEnum):
-    OPEN = "OPEN"
+    CREATED = "CREATED"
+    ACCEPTED = "ACCEPTED"
+    OPEN = "ACCEPTED"  # legacy alias for resting accepted orders
     PARTIALLY_FILLED = "PARTIALLY_FILLED"
     FILLED = "FILLED"
+    CANCEL_PENDING = "CANCEL_PENDING"
     CANCELLED = "CANCELLED"
     REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+
+
+class OrderEventType(StrEnum):
+    CREATED = "CREATED"
+    REJECTED = "REJECTED"
+    ACCEPTED = "ACCEPTED"
+    FILL = "FILL"
+    CANCEL_REQUESTED = "CANCEL_REQUESTED"
+    CANCELLED = "CANCELLED"
+    EXPIRED = "EXPIRED"
+
+
+WORKING_STATUSES: frozenset[OrderStatus] = frozenset(
+    {
+        OrderStatus.ACCEPTED,
+        OrderStatus.PARTIALLY_FILLED,
+        OrderStatus.CANCEL_PENDING,
+    }
+)
+
+TERMINAL_STATUSES: frozenset[OrderStatus] = frozenset(
+    {
+        OrderStatus.FILLED,
+        OrderStatus.CANCELLED,
+        OrderStatus.REJECTED,
+        OrderStatus.EXPIRED,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -38,12 +81,22 @@ class Quote:
     premium: Decimal | None = None
     nav: Decimal | None = None
 
+    def __post_init__(self) -> None:
+        if not str(self.symbol).strip():
+            raise DomainError("quote.symbol is required")
+
 
 @dataclass(frozen=True)
 class MarketSnapshot:
     event_id: str
     timestamp: datetime
     quotes: tuple[Quote, ...]
+
+    def __post_init__(self) -> None:
+        if not str(self.event_id).strip():
+            raise DomainError("event_id is required")
+        if self.timestamp.tzinfo is None:
+            raise DomainError("snapshot timestamp must be timezone-aware")
 
 
 @dataclass(frozen=True)
@@ -58,6 +111,14 @@ class Account:
     fees_paid: Decimal
     created_at: str
     updated_at: str
+
+    def __post_init__(self) -> None:
+        if self.initial_cash <= 0:
+            raise DomainError("initial_cash must be positive")
+        if self.fee_rate < 0 or self.fee_rate >= 1:
+            raise DomainError("fee_rate must be in [0, 1)")
+        if self.fees_paid < 0:
+            raise DomainError("fees_paid must be non-negative")
 
 
 @dataclass(frozen=True)
@@ -74,6 +135,39 @@ class Order:
     status: OrderStatus
     submitted_at: str
     updated_at: str
+    time_in_force: TimeInForce = TimeInForce.DAY
+    rejection_code: str | None = None
+    avg_fill_price: Decimal | None = None
+    created_at: str | None = None
+    accepted_at: str | None = None
+    closed_at: str | None = None
+    active_at: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.quantity <= 0:
+            raise DomainError("order.quantity must be positive")
+        if self.filled_quantity < 0:
+            raise DomainError("filled_quantity must be non-negative")
+        if self.filled_quantity > self.quantity:
+            raise DomainError("filled_quantity cannot exceed quantity")
+        if self.order_type == OrderType.LIMIT and (
+            self.limit_price is None or self.limit_price <= 0
+        ):
+            raise DomainError("positive limit_price is required for LIMIT orders")
+        if not str(self.symbol).strip():
+            raise DomainError("order.symbol is required")
+
+    @property
+    def remaining_quantity(self) -> Decimal:
+        return self.quantity - self.filled_quantity
+
+    @property
+    def is_working(self) -> bool:
+        return self.status in WORKING_STATUSES
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.status in TERMINAL_STATUSES
 
 
 @dataclass(frozen=True)
@@ -85,6 +179,19 @@ class Fill:
     price: Decimal
     fee: Decimal
     filled_at: str
+    raw_match_price: Decimal | None = None
+    market_timestamp: str | None = None
+    execution_timestamp: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.quantity <= 0:
+            raise DomainError("fill.quantity must be positive")
+        if self.price <= 0:
+            raise DomainError("fill.price must be positive")
+        if self.fee < 0:
+            raise DomainError("fill.fee must be non-negative")
+        if self.raw_match_price is not None and self.raw_match_price <= 0:
+            raise DomainError("raw_match_price must be positive when set")
 
 
 @dataclass(frozen=True)
@@ -100,6 +207,8 @@ class Position:
 
 @dataclass(frozen=True)
 class Portfolio:
+    """Derived trading-state view; ``cash`` mirrors Account ledger truth."""
+
     account_id: str
     cash: Decimal
     equity: Decimal
@@ -108,6 +217,49 @@ class Portfolio:
     unrealized_pnl: Decimal
     positions: tuple[Position, ...]
     as_of: str | None
+
+
+@dataclass(frozen=True)
+class ProposedFill:
+    quantity: Decimal
+    raw_match_price: Decimal
+
+    def __post_init__(self) -> None:
+        if self.quantity <= 0:
+            raise DomainError("proposed fill quantity must be positive")
+        if self.raw_match_price <= 0:
+            raise DomainError("raw_match_price must be positive")
+
+
+@dataclass(frozen=True)
+class MatchResult:
+    """Matching proposal only — never mutates order/account state."""
+
+    proposed: ProposedFill | None
+    terminal: bool
+    rejection: str | None = None
+
+    @property
+    def quantity(self) -> Decimal:
+        return self.proposed.quantity if self.proposed else Decimal(0)
+
+    @property
+    def price(self) -> Decimal | None:
+        """Backward-compatible alias for raw_match_price."""
+        return None if self.proposed is None else self.proposed.raw_match_price
+
+    @property
+    def raw_match_price(self) -> Decimal | None:
+        return None if self.proposed is None else self.proposed.raw_match_price
+
+
+@dataclass(frozen=True)
+class OrderEvent:
+    id: str
+    order_id: str
+    event_type: OrderEventType
+    timestamp: str
+    payload: dict[str, str] = field(default_factory=dict)
 
 
 def decimal_value(value: Decimal | float | str) -> Decimal:

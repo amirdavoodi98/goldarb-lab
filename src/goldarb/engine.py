@@ -194,8 +194,9 @@ class SimulationLoop:
                 "symbols": ",".join(quote.symbol for quote in snapshot.quotes),
             },
         )
-        execution = self.latency.apply_snapshot(self.slippage.apply_snapshot(snapshot))
-        self.execution.on_market(self.broker, execution)
+        # Execution slippage/latency belong on the local paper order path
+        # (LocalPaperBroker pipeline), not on market snapshots here.
+        self.execution.on_market(self.broker, snapshot)
         self._notify_new_fills()
         self.strategy.on_market_data(self.ctx)
         self._notify_new_fills()
@@ -248,8 +249,19 @@ class SimulationEngine:
         own = False
         broker = simulator
         if broker is None:
-            broker = LocalSimulator(config.database or ":memory:")
+            broker = LocalSimulator(
+                config.database or ":memory:",
+                fee=fee_model,
+                slippage=slippage_model,
+                latency=latency_model,
+            )
             own = True
+        elif hasattr(broker, "configure_execution"):
+            broker.configure_execution(
+                fee=fee_model,
+                slippage=slippage_model,
+                latency=latency_model,
+            )
         try:
             account_id = config.account_id
             if account_id is None:
@@ -280,6 +292,8 @@ class SimulationEngine:
             )
             for snapshot in _iter_events(provider):
                 loop.process(snapshot)
+            if hasattr(broker, "settle_delayed_orders"):
+                broker.settle_delayed_orders()
             loop.finish()
             portfolio = broker.portfolio(account_id)
             orders = broker.list_orders(account_id)

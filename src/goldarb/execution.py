@@ -1,8 +1,12 @@
 """Replaceable execution models: broker protocol, fee, slippage, latency.
 
-``LocalSimulator`` remains the paper broker. Engines apply slippage and latency
-to snapshots before ``feed()`` so default matching behavior is unchanged when
-``NoSlippage`` and ``NoLatency`` are used.
+Order-path paper venue (LocalPaperBroker) uses:
+
+    MatchingEngine → SlippageModel.adjust_fill_price → FeeModel → PortfolioService
+
+``SimulationLoop`` may still apply snapshot-level slippage/latency before
+``feed()``; keep those as NoOp when broker-level models are configured
+(see docs/adr/0001-paper-broker-lifecycle.md).
 """
 
 from __future__ import annotations
@@ -103,6 +107,20 @@ class ServerSideExecution:
         del broker, snapshot
 
 
+# Canonical name from the paper-broker architecture (ADR 0001).
+NoOpMarketIngress = ServerSideExecution
+
+
+@dataclass(frozen=True)
+class LocalMarketIngress:
+    """Alias for feeding snapshots into a local PaperBroker."""
+
+    name: str = "LocalMarketIngress"
+
+    def on_market(self, broker: Broker, snapshot: MarketSnapshot) -> None:
+        LocalFeedExecution().on_market(broker, snapshot)
+
+
 class FeeModel(Protocol):
     name: str
 
@@ -123,7 +141,7 @@ class FeeModel(Protocol):
 
 @dataclass(frozen=True)
 class PercentFee:
-    """Proportional fee; ``rate`` is wired into ``LocalSimulator`` account fee_rate."""
+    """Proportional fee; ``rate`` is wired into paper account fee_rate."""
 
     fee_rate: Decimal | float | str = "0.0005"
     name: str = "PercentFee"
@@ -158,6 +176,14 @@ class SlippageModel(Protocol):
 
     def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot: ...
 
+    def adjust_fill_price(
+        self,
+        *,
+        raw_match_price: Decimal,
+        side: Side,
+        quote: Quote | None = None,
+    ) -> Decimal: ...
+
     def config(self) -> dict[str, str]: ...
 
 
@@ -167,6 +193,16 @@ class NoSlippage:
 
     def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot:
         return snapshot
+
+    def adjust_fill_price(
+        self,
+        *,
+        raw_match_price: Decimal,
+        side: Side,
+        quote: Quote | None = None,
+    ) -> Decimal:
+        del side, quote
+        return raw_match_price
 
     def config(self) -> dict[str, str]:
         return {}
@@ -204,20 +240,38 @@ def _map_quotes(snapshot: MarketSnapshot, mapper: Callable[[Quote], Quote]) -> M
 
 @dataclass(frozen=True)
 class FixedSlippage:
-    """Widen the book by a fixed amount: BUY pays more, SELL receives less."""
+    """BUY pays more / SELL receives less by a fixed amount."""
 
     amount: Decimal | float | str
     name: str = "FixedSlippage"
 
-    def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot:
+    def _delta(self) -> Decimal:
         delta = decimal_value(self.amount)
         if delta < ZERO:
             raise ValueError("slippage amount must be non-negative")
+        return delta
+
+    def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot:
+        delta = self._delta()
 
         def mapper(quote: Quote) -> Quote:
             return _slip_quote(quote, bid_delta=delta, ask_delta=delta)
 
         return _map_quotes(snapshot, mapper)
+
+    def adjust_fill_price(
+        self,
+        *,
+        raw_match_price: Decimal,
+        side: Side,
+        quote: Quote | None = None,
+    ) -> Decimal:
+        del quote
+        delta = self._delta()
+        price = raw_match_price + delta if side == Side.BUY else raw_match_price - delta
+        if price <= ZERO:
+            raise ValueError("slippage would make fill price non-positive")
+        return price
 
     def config(self) -> dict[str, str]:
         return {"amount": str(decimal_value(self.amount))}
@@ -225,15 +279,19 @@ class FixedSlippage:
 
 @dataclass(frozen=True)
 class PercentSlippage:
-    """Widen the book by a fraction of price (0.01 = 1%)."""
+    """BUY pays more / SELL receives less by a fraction of raw match price."""
 
     fraction: Decimal | float | str
     name: str = "PercentSlippage"
 
-    def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot:
+    def _pct(self) -> Decimal:
         pct = decimal_value(self.fraction)
         if pct < ZERO:
             raise ValueError("slippage fraction must be non-negative")
+        return pct
+
+    def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot:
+        pct = self._pct()
 
         def mapper(quote: Quote) -> Quote:
             bid = quote.bid if quote.bid is not None else quote.last
@@ -243,6 +301,21 @@ class PercentSlippage:
             return _slip_quote(quote, bid_delta=bid_delta, ask_delta=ask_delta)
 
         return _map_quotes(snapshot, mapper)
+
+    def adjust_fill_price(
+        self,
+        *,
+        raw_match_price: Decimal,
+        side: Side,
+        quote: Quote | None = None,
+    ) -> Decimal:
+        del quote
+        pct = self._pct()
+        delta = raw_match_price * pct
+        price = raw_match_price + delta if side == Side.BUY else raw_match_price - delta
+        if price <= ZERO:
+            raise ValueError("slippage would make fill price non-positive")
+        return price
 
     def config(self) -> dict[str, str]:
         return {"fraction": str(decimal_value(self.fraction))}
@@ -254,6 +327,8 @@ class LatencyModel(Protocol):
     def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot: ...
 
     def delay(self) -> timedelta: ...
+
+    def submit_delay(self) -> timedelta: ...
 
     def config(self) -> dict[str, str]: ...
 
@@ -268,13 +343,16 @@ class NoLatency:
     def delay(self) -> timedelta:
         return timedelta(0)
 
+    def submit_delay(self) -> timedelta:
+        return self.delay()
+
     def config(self) -> dict[str, str]:
         return {}
 
 
 @dataclass(frozen=True)
 class FixedLatency:
-    """Shift the execution clock forward by a fixed delay."""
+    """SubmitLatency / snapshot shift by a fixed delay."""
 
     milliseconds: int
     name: str = "FixedLatency"
@@ -283,6 +361,9 @@ class FixedLatency:
         if self.milliseconds < 0:
             raise ValueError("latency milliseconds must be non-negative")
         return timedelta(milliseconds=self.milliseconds)
+
+    def submit_delay(self) -> timedelta:
+        return self.delay()
 
     def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot:
         return replace(snapshot, timestamp=snapshot.timestamp + self.delay())
