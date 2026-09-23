@@ -46,6 +46,14 @@ def test_session_timeline_covers_each_second():
     )
 
 
+def test_session_timeline_skips_thursday_and_friday():
+    thursday = date(2026, 8, 27)
+    friday = date(2026, 8, 28)
+    noon = datetime(2026, 8, 27, 12, 0, tzinfo=TEHRAN)
+    assert session_timeline(thursday, fill_session=True) == []
+    assert session_timeline(friday, first=noon, last=noon) == []
+
+
 def _pair_series(
     start: datetime, n: int = 12
 ) -> tuple[list[dict], list[dict], dict[str, list[dict]]]:
@@ -89,7 +97,7 @@ def test_session_hours_do_not_fill_overnight():
     assert max(gaps) < timedelta(hours=24)
 
 
-def test_fill_session_covers_12_to_17_hourly():
+def test_fill_session_covers_12_to_18_hourly():
     start = datetime(2026, 8, 29, 8, 30, tzinfo=UTC)
     snapshots = snapshots_from_symbol_bars(
         {"طلا": [_bar(start, 20000, 0.0)]},
@@ -101,7 +109,7 @@ def test_fill_session_covers_12_to_17_hourly():
     open_at, close_at = session_bounds(start.astimezone(TEHRAN).date())
     assert snapshots[0].timestamp.astimezone(TEHRAN) == open_at
     assert snapshots[-1].timestamp.astimezone(TEHRAN) == close_at
-    assert len(snapshots) == 6
+    assert len(snapshots) == 7
 
 
 def test_month_backtest_pipeline_1s(tmp_path):

@@ -1,8 +1,8 @@
-"""Iran cash-market session helpers (12:00–17:00 Asia/Tehran)."""
+"""Iran gold-fund session helpers (12:00–18:00 Asia/Tehran, Saturday–Wednesday)."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
@@ -12,7 +12,9 @@ from .simulation.models import MarketSnapshot, Quote, decimal_value
 
 TEHRAN = ZoneInfo("Asia/Tehran")
 SESSION_OPEN = time(12, 0)
-SESSION_CLOSE = time(17, 0)
+SESSION_CLOSE = time(18, 0)
+# Monday=0 … Sunday=6 → Saturday–Wednesday.
+SESSION_WEEKDAYS: frozenset[int] = frozenset({5, 6, 0, 1, 2})
 ONE_SECOND = timedelta(seconds=1)
 ZERO = Decimal(0)
 
@@ -27,6 +29,15 @@ def grain_step(grain: str) -> timedelta:
     return ONE_SECOND
 
 
+def is_iran_trading_day(
+    day: date,
+    *,
+    weekdays: Collection[int] = SESSION_WEEKDAYS,
+) -> bool:
+    """True for Saturday–Wednesday gold-fund cash sessions."""
+    return day.weekday() in weekdays
+
+
 def session_bounds(
     day: date | None = None,
     *,
@@ -34,7 +45,7 @@ def session_bounds(
     open_time: time = SESSION_OPEN,
     close_time: time = SESSION_CLOSE,
 ) -> tuple[datetime, datetime]:
-    """Return [12:00, 17:00] Asia/Tehran for ``day`` (default: today in Tehran)."""
+    """Return [12:00, 18:00] Asia/Tehran for ``day`` (default: today in Tehran)."""
     local_day = day or datetime.now(zone).date()
     start = datetime.combine(local_day, open_time, tzinfo=zone)
     end = datetime.combine(local_day, close_time, tzinfo=zone)
@@ -48,12 +59,15 @@ def in_session(
     zone: ZoneInfo = TEHRAN,
     open_time: time = SESSION_OPEN,
     close_time: time = SESSION_CLOSE,
+    weekdays: Collection[int] = SESSION_WEEKDAYS,
 ) -> bool:
-    """True when ``timestamp`` falls inside the configured session."""
+    """True when ``timestamp`` falls inside the configured Saturday–Wednesday session."""
     if timestamp.tzinfo is None:
         raise ValueError("timestamp must be timezone-aware")
     local = timestamp.astimezone(zone)
     if day is not None and local.date() != day:
+        return False
+    if not is_iran_trading_day(local.date(), weekdays=weekdays):
         return False
     start, end = session_bounds(local.date(), zone=zone, open_time=open_time, close_time=close_time)
     return start <= local <= end
@@ -74,12 +88,16 @@ def session_timeline(
     zone: ZoneInfo = TEHRAN,
     open_time: time = SESSION_OPEN,
     close_time: time = SESSION_CLOSE,
+    weekdays: Collection[int] = SESSION_WEEKDAYS,
 ) -> list[datetime]:
-    """1s (or ``step``) timestamps for one Iran cash session.
+    """1s (or ``step``) timestamps for one Iran gold-fund cash session.
 
-    ``fill_session=True`` covers 12:00–17:00 inclusive. Otherwise the grid
-    spans only ``[first, last]`` clipped to the session.
+    ``fill_session=True`` covers 12:00–18:00 inclusive on Saturday–Wednesday.
+    Otherwise the grid spans only ``[first, last]`` clipped to the session.
+    Thursday and Friday yield an empty timeline.
     """
+    if not is_iran_trading_day(day, weekdays=weekdays):
+        return []
     open_at, close_at = session_bounds(day, zone=zone, open_time=open_time, close_time=close_time)
     if fill_session:
         start, end = open_at, close_at

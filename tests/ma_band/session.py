@@ -10,6 +10,7 @@ from goldarb.session import (
     TEHRAN,
     filter_session_snapshots,
     in_iran_session,
+    is_iran_trading_day,
     session_bounds,
     snapshot_from_live,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "filter_session_snapshots",
     "format_tick",
     "in_iran_session",
+    "is_iran_trading_day",
     "session_bounds",
     "snapshot_from_live",
     "tick_record",
