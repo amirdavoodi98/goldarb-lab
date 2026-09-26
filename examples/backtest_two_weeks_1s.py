@@ -28,7 +28,7 @@ from goldarb import (
 )
 from goldarb.archive import write_symbol_bars
 from goldarb.execution import PercentFee
-from goldarb.simulation import LocalSimulator
+from goldarb.simulation import LocalSimulator, get_broker
 from goldarb.universe import GOLD_FUND_SYMBOLS
 
 HERE = Path(__file__).resolve().parent
@@ -129,7 +129,7 @@ def main() -> None:
 
     if args.paper.exists():
         args.paper.unlink()
-    with LocalSimulator(args.paper) as simulator:
+    with LocalSimulator(args.paper, broker=get_broker("agah")) as simulator:
         result = offline_backtest(
             BubbleSignStrategy(quantity="1"),
             archive,

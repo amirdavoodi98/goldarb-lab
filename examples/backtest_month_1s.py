@@ -12,7 +12,7 @@ from pathlib import Path
 
 from goldarb import BubbleRankStrategy, LabClient, PairZScoreStrategy, month_backtest
 from goldarb.execution import PercentFee
-from goldarb.simulation import LocalSimulator
+from goldarb.simulation import LocalSimulator, get_broker
 from goldarb.universe import GOLD_FUND_SYMBOLS
 
 HERE = Path(__file__).resolve().parent
@@ -70,7 +70,7 @@ def main() -> None:
         f"month backtest days={DAYS} grain=1s fill_session={FILL_SESSION} "
         f"symbols={len(GOLD_FUND_SYMBOLS)} strategy={strategy.name}"
     )
-    with _client() as client, LocalSimulator(DB_PATH) as simulator:
+    with _client() as client, LocalSimulator(DB_PATH, broker=get_broker("agah")) as simulator:
         result = month_backtest(
             strategy,
             client,
