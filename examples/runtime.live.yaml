@@ -1,0 +1,66 @@
+# Live paper (local matching) — same strategy/fee/slippage as runtime.backtest.yaml.
+# Only runtime.mode + data.* (+ session poll) differ.
+#
+#   .venv/bin/python examples/run.py examples/runtime.live.yaml
+#
+# Needs credentials: GOLDARB_TOKEN or GOLDARB_USERNAME+GOLDARB_PASSWORD
+# and: uv pip install --python .venv/bin/python -e '.[yaml]'
+#
+# Smoke: session.max_polls below. Remove max_polls to run until session.end.
+
+data:
+  provider: goldarb_api
+  source: https://goldarb.ir
+  symbols:
+    - گوهر
+    - زر
+    - عیار
+    - کهربا
+    - طلا
+    - گلدیس
+    - آلتون
+    - درنا
+    - لیان
+    - ناب
+    - آتش
+    - قیراط
+    - زرگر
+    - زروان
+    - مثقال
+    - نفیس
+    - امرالد
+    - زرفام
+    - درخشان
+    - تابش
+  grain: 1s
+
+runtime:
+  mode: live_paper_local
+  initial_cash: "1000000000"
+  allow_short: false
+  database: ":memory:"
+  label: price_momentum_live
+
+session:
+  timezone: Asia/Tehran
+  start: "12:00:00"
+  end: "18:00:00"
+  poll_seconds: 2.0
+  max_polls: 30
+
+strategy:
+  name: price_momentum
+  params:
+    quantity: "1"
+    threshold_pct: "0.1"
+
+fee:
+  name: PercentFee
+  params:
+    fee_rate: "0.0005"
+
+slippage:
+  name: NoSlippage
+
+latency:
+  name: NoLatency
