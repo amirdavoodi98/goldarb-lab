@@ -96,6 +96,7 @@ def test_session_replay_prints_buy_and_sell_signals(tmp_path, capsys):
 
 
 def test_snapshot_from_live_uses_best_bid_ask_and_session_clock():
+    quote_at = datetime(2026, 8, 29, 13, 45, tzinfo=TEHRAN)
     snapshot = snapshot_from_live(
         symbol="طلا",
         last_price={
@@ -109,8 +110,12 @@ def test_snapshot_from_live_uses_best_bid_ask_and_session_clock():
             "buy_orders": [{"price": 1199000, "volume": 10, "count": 1}],
             "sell_orders": [{"price": 1201000, "volume": 8, "count": 1}],
         },
+        # Quotes older than 60s are stamped with wall-clock now. Stay inside
+        # that window so the assertion uses the exchange session clock.
+        now=quote_at + timedelta(seconds=30),
     )
     assert snapshot is not None
+    assert snapshot.timestamp == quote_at
     assert in_iran_session(snapshot.timestamp)
     quote = snapshot.quotes[0]
     assert quote.last == Decimal("1200000")
