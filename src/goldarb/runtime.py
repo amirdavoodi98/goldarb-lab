@@ -6,11 +6,11 @@ import os
 from datetime import datetime, time
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 from zoneinfo import ZoneInfo
 
 from .client import LabClient
-from .config import AppConfig, ModelConfig
+from .config import AppConfig, AppConfigBuilder, ModelConfig, StrategyConfig
 from .data import HistoricalDataProvider, LiveDataProvider
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
 from .execution import (
@@ -30,11 +30,19 @@ from .execution import (
 )
 from .session import grain_step
 from .sources import ArchiveDatasetSource, historical_source, live_source
+from .strategies import (
+    BubbleRankStrategy,
+    BubbleSignStrategy,
+    MaBandStrategy,
+    PairZScoreStrategy,
+    PriceMomentumStrategy,
+)
 from .strategy import Strategy
 
 FeeFactory = Callable[[dict[str, Any]], FeeModel]
 SlippageFactory = Callable[[dict[str, Any]], SlippageModel]
 LatencyFactory = Callable[[dict[str, Any]], LatencyModel]
+StrategyFactory = Callable[[dict[str, Any]], Strategy]
 
 
 def _decimal_param(params: dict[str, Any], *names: str, default: str = "0") -> Decimal:
@@ -58,6 +66,23 @@ LATENCY_MODELS: dict[str, LatencyFactory] = {
     "fixedlatency": lambda p: FixedLatency(int(p.get("milliseconds", 0))),
 }
 
+STRATEGY_REGISTRY: dict[str, StrategyFactory] = {
+    "price_momentum": lambda p: PriceMomentumStrategy(**p),
+    "pricemomentum": lambda p: PriceMomentumStrategy(**p),
+    "bubble_sign": lambda p: BubbleSignStrategy(**p),
+    "bubblesign": lambda p: BubbleSignStrategy(**p),
+    "bubble_rank": lambda p: BubbleRankStrategy(**p),
+    "bubblerank": lambda p: BubbleRankStrategy(**p),
+    "pair_zscore": lambda p: PairZScoreStrategy(**p),
+    "pairzscore": lambda p: PairZScoreStrategy(**p),
+    "ma_band": lambda p: MaBandStrategy(**p),
+    "maband": lambda p: MaBandStrategy(**p),
+}
+
+
+def _normalize_key(name: str) -> str:
+    return name.replace("-", "_").strip().lower()
+
 
 def _model(config: ModelConfig, registry: dict[str, Callable[[dict[str, Any]], Any]]) -> Any:
     key = config.name.replace("_", "").replace("-", "").lower()
@@ -80,6 +105,65 @@ def build_latency(config: ModelConfig) -> LatencyModel:
     return _model(config, LATENCY_MODELS)
 
 
+def build_strategy(
+    config: StrategyConfig | Mapping[str, Any] | None = None,
+    **params: Any,
+) -> Strategy:
+    """Construct a Strategy from ``strategy.name`` + ``strategy.params``."""
+    if isinstance(config, StrategyConfig):
+        name = config.name
+        merged = dict(config.params)
+        merged.update(params)
+    elif config is None:
+        name = str(params.pop("name", "") or "")
+        merged = dict(params)
+    else:
+        item = dict(config)
+        name = str(item.get("name") or params.pop("name", "") or "")
+        merged = dict(item.get("params") or {})
+        merged.update({k: v for k, v in item.items() if k not in {"name", "params", "version"}})
+        merged.update(params)
+    key = _normalize_key(name)
+    compact = key.replace("_", "")
+    factory = STRATEGY_REGISTRY.get(key) or STRATEGY_REGISTRY.get(compact)
+    if factory is None:
+        known = ", ".join(
+            sorted({k for k in STRATEGY_REGISTRY if "_" in k})
+        )
+        raise ValueError(f"unknown strategy.name {name!r}; known: {known}")
+    return factory(merged)
+
+
+def _load_dotenv() -> None:
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:
+        pass
+
+
+def _client_from_env(*, timeout: float = 120.0) -> LabClient:
+    """Token first; fall back to username/password login."""
+    _load_dotenv()
+    try:
+        return LabClient.from_env(timeout=timeout)
+    except RuntimeError:
+        username = os.environ.get("GOLDARB_USERNAME", "").strip()
+        password = os.environ.get("GOLDARB_PASSWORD", "").strip()
+        base = os.environ.get("GOLDARB_BASE_URL", "https://goldarb.ir").strip()
+        if username and password and base:
+            return LabClient.login(
+                base_url=base,
+                username=username,
+                password=password,
+                timeout=timeout,
+            )
+        raise RuntimeError(
+            "Set GOLDARB_BASE_URL+GOLDARB_TOKEN or GOLDARB_USERNAME+GOLDARB_PASSWORD"
+        )
+
+
 class StrategyRunner:
     """Build providers, execution models and broker from one validated config."""
 
@@ -92,24 +176,22 @@ class StrategyRunner:
     @classmethod
     def from_config(
         cls,
-        config: AppConfig | str | Path,
+        config: AppConfig | AppConfigBuilder | str | Path,
         *,
         client: Any | None = None,
     ) -> StrategyRunner:
-        loaded = AppConfig.from_file(config) if isinstance(config, (str, Path)) else config
+        if isinstance(config, AppConfigBuilder):
+            loaded = config.build()
+        elif isinstance(config, (str, Path)):
+            loaded = AppConfig.from_file(config)
+        else:
+            loaded = config
         return cls(loaded, client=client)
 
     def _client(self) -> Any:
         if self.client is not None:
             return self.client
-        source = self.config.data.source.strip()
-        token = os.environ.get("GOLDARB_TOKEN", "").strip()
-        if source.startswith(("http://", "https://")):
-            if not token:
-                raise RuntimeError("Set GOLDARB_TOKEN for the configured API source")
-            self.client = LabClient(base_url=source, token=token)
-        else:
-            self.client = LabClient.from_env()
+        self.client = _client_from_env()
         self._owns_client = True
         return self.client
 
@@ -178,9 +260,11 @@ class StrategyRunner:
             session_close=stop_parts,
         )
 
-    def run(self, strategy: Strategy) -> RunResult:
+    def run(self, strategy: Strategy | None = None) -> RunResult:
+        """Run ``strategy``, or build it from ``config.strategy`` when omitted."""
+        built = strategy if strategy is not None else build_strategy(self.config.strategy)
         try:
-            return self._run(strategy)
+            return self._run(built)
         finally:
             if self._owns_client and self.client is not None:
                 self.client.close()
@@ -233,8 +317,10 @@ __all__ = [
     "FEE_MODELS",
     "LATENCY_MODELS",
     "SLIPPAGE_MODELS",
+    "STRATEGY_REGISTRY",
     "StrategyRunner",
     "build_fee",
     "build_latency",
     "build_slippage",
+    "build_strategy",
 ]

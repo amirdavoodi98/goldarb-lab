@@ -8,11 +8,11 @@ from .archive import (
     read_symbol_bars,
 )
 from .client import LabClient
-from .config import AppConfig
+from .config import AppConfig, AppConfigBuilder
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
 from .pipelines import iran_session_live, month_backtest, offline_backtest
 from .premium_threshold import PremiumThresholdResult, run_premium_threshold
-from .runtime import StrategyRunner
+from .runtime import STRATEGY_REGISTRY, StrategyRunner, build_strategy
 from .sources import (
     ArchiveDatasetSource,
     GoldArbApiSource,
@@ -31,6 +31,7 @@ from .universe import GOLD_FUND_SYMBOLS, GOLD_FUNDS
 __all__ = [
     "BacktestEngine",
     "AppConfig",
+    "AppConfigBuilder",
     "ArchiveDatasetSource",
     "BubbleRankStrategy",
     "BubbleSignStrategy",
@@ -48,9 +49,11 @@ __all__ = [
     "ParquetDatasetStore",
     "RunConfig",
     "RunResult",
+    "STRATEGY_REGISTRY",
     "Strategy",
     "StrategyContext",
     "StrategyRunner",
+    "build_strategy",
     "dataset_store",
     "download_symbol_bars",
     "iran_session_live",

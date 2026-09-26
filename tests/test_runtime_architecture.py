@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from goldarb import AppConfig, Strategy, StrategyRunner
+from goldarb import AppConfig, Strategy, StrategyRunner, build_strategy
 from goldarb.archive import (
     ARCHIVE_SCHEMA_VERSION,
     JsonlDatasetStore,
@@ -20,6 +20,7 @@ from goldarb.runtime import build_latency, build_slippage
 from goldarb.simulation import RemoteSimulator
 from goldarb.simulation.models import MarketSnapshot
 from goldarb.sources import ArchiveDatasetSource, historical_source
+from goldarb.strategies import PriceMomentumStrategy
 
 
 class CountingStrategy(Strategy):
@@ -142,6 +143,87 @@ def test_offline_runner_selects_archive_from_config(tmp_path):
     assert len(strategy.events) == 2
     assert result.config.strategy_name == "counter"
     assert result.metrics.n_orders == 0
+
+
+def test_build_strategy_registry_and_runner_auto_build(tmp_path):
+    write_symbol_bars(
+        tmp_path,
+        {"طلا": _bars(date(2026, 8, 29), (100, 101, 99))},
+        grain="1s",
+        start="2026-08-29",
+        end="2026-08-29",
+    )
+    built = build_strategy(
+        {"name": "price_momentum", "params": {"quantity": "1", "threshold_pct": "0.1"}}
+    )
+    assert isinstance(built, PriceMomentumStrategy)
+    assert str(built.threshold_pct) == "0.1"
+    with pytest.raises(ValueError, match="unknown strategy"):
+        build_strategy(name="not_a_strategy")
+
+    config = AppConfig.from_mapping(
+        {
+            "data": {
+                "provider": "archive",
+                "source": str(tmp_path),
+                "symbols": ["طلا"],
+                "grain": "1s",
+                "fill_session": False,
+            },
+            "runtime": {"mode": "offline_backtest", "initial_cash": "100000"},
+            "strategy": {
+                "name": "price_momentum",
+                "params": {"quantity": "1", "threshold_pct": "0.5"},
+            },
+            "fee": "NoFee",
+        }
+    )
+    result = StrategyRunner.from_config(config).run()
+    assert result.config.strategy_name == "price_momentum"
+    assert len(result.equity_history) >= 1
+
+
+def test_app_config_builder_setters(tmp_path):
+    write_symbol_bars(
+        tmp_path,
+        {"طلا": _bars(date(2026, 8, 29), (100, 101))},
+        grain="1s",
+        start="2026-08-29",
+        end="2026-08-29",
+    )
+    config = (
+        AppConfig.builder()
+        .set_archive(tmp_path, symbols=["طلا"], start="2026-08-29", end="2026-08-29")
+        .set_initial_cash(50_000)
+        .set_strategy("price_momentum", quantity="1", threshold_pct="0.1")
+        .set_fee("NoFee")
+        .set_slippage("NoSlippage")
+        .set_latency("NoLatency")
+        .build()
+    )
+    assert config.runtime.mode == "offline_backtest"
+    assert config.data.provider == "archive"
+    assert config.data.symbols == ("طلا",)
+    assert config.strategy.name == "price_momentum"
+    assert config.fee.name == "NoFee"
+
+    result = StrategyRunner.from_config(config).run()
+    assert result.config.strategy_name == "price_momentum"
+
+    live = (
+        config.to_builder()
+        .set_live(symbols=["طلا", "عیار"], max_polls=3, poll_seconds=2.0)
+        .set_strategy_params(threshold_pct="0.2")
+        .build()
+    )
+    assert live.runtime.mode == "live_paper_local"
+    assert live.data.provider == "goldarb_api"
+    assert live.session.max_polls == 3
+    assert live.strategy.params["threshold_pct"] == "0.2"
+    assert live.strategy.params["quantity"] == "1"
+
+    with pytest.raises(ValueError, match="runtime.mode"):
+        AppConfig.builder().set_mode("not-a-mode")
 
 
 def test_config_validation_and_model_registries():
