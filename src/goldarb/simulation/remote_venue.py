@@ -17,6 +17,7 @@ class RemoteVenue(Protocol):
         label: str = "",
         fee_rate: Any = "0.0005",
         allow_short: bool = False,
+        broker: str | None = None,
     ) -> Account: ...
 
     def get_account(self, account_id: str) -> Account: ...
@@ -31,6 +32,7 @@ class RemoteVenue(Protocol):
         order_type: OrderType | str = OrderType.MARKET,
         limit_price: Any | None = None,
         client_order_id: str | None = None,
+        broker: str | None = None,
     ) -> Order: ...
 
     def cancel_order(self, account_id: str, order_id: str) -> Order: ...

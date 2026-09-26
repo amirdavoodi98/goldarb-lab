@@ -19,7 +19,7 @@ from decimal import Decimal
 from goldarb import BacktestEngine, PriceMomentumStrategy, RunConfig
 from goldarb.data import HistoricalDataProvider
 from goldarb.execution import FixedSlippage, NoSlippage, PercentFee
-from goldarb.simulation import LocalSimulator
+from goldarb.simulation import LocalSimulator, get_broker
 
 # Synthetic last prices (Tehran session-style ticks are not required here).
 # +2% then -2% should produce BUY then SELL with threshold_pct=0.5.
@@ -62,6 +62,7 @@ def main() -> int:
 
     with LocalSimulator(
         args.db,
+        broker=get_broker("agah"),
         fee=fee,
         slippage=slippage,
     ) as simulator:

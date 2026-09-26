@@ -74,6 +74,7 @@ class InMemoryRemoteVenue:
         label: str = "",
         fee_rate: Decimal | float | str = "0.0005",
         allow_short: bool = False,
+        broker: str | None = None,
     ) -> Account:
         cash = decimal_value(initial_cash)
         rate = decimal_value(fee_rate)
@@ -90,6 +91,7 @@ class InMemoryRemoteVenue:
             fees_paid=ZERO,
             created_at=stamp,
             updated_at=stamp,
+            broker=str(broker or ""),
         )
         self.accounts[account_id] = account
         self.positions[account_id] = {}
@@ -111,6 +113,7 @@ class InMemoryRemoteVenue:
         order_type: OrderType | str = OrderType.MARKET,
         limit_price: Decimal | float | str | None = None,
         client_order_id: str | None = None,
+        broker: str | None = None,
     ) -> Order:
         client_id = client_order_id or str(uuid.uuid4())
         key = (account_id, client_id)
@@ -131,6 +134,7 @@ class InMemoryRemoteVenue:
             status=OrderStatus.CREATED,
             submitted_at=stamp,
             updated_at=stamp,
+            broker=str(broker or ""),
             time_in_force=TimeInForce.DAY,
             created_at=stamp,
             active_at=stamp,

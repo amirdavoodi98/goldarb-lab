@@ -116,6 +116,7 @@ class OrderManager:
         submitted_at: str,
         active_at: str | None = None,
         order_id: str | None = None,
+        broker: str = "",
     ) -> Order:
         client_id = client_order_id or str(uuid.uuid4())
         key = (account_id, client_id)
@@ -147,6 +148,7 @@ class OrderManager:
             status=OrderStatus.CREATED,
             submitted_at=submitted_at,
             updated_at=submitted_at,
+            broker=broker,
             time_in_force=tif,
             created_at=submitted_at,
             active_at=active_at or submitted_at,
