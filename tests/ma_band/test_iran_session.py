@@ -96,6 +96,10 @@ def test_session_replay_prints_buy_and_sell_signals(tmp_path, capsys):
 
 
 def test_snapshot_from_live_uses_best_bid_ask_and_session_clock():
+    # Pin the wall clock so CI outside 12:00–18:00 Tehran still passes.
+    # d_even/h_even is 13:45; keep now within 60s so the live stamp is not
+    # replaced as stale (see snapshot_from_live).
+    now = datetime(2026, 8, 29, 13, 45, 10, tzinfo=TEHRAN)
     snapshot = snapshot_from_live(
         symbol="طلا",
         last_price={
@@ -109,8 +113,10 @@ def test_snapshot_from_live_uses_best_bid_ask_and_session_clock():
             "buy_orders": [{"price": 1199000, "volume": 10, "count": 1}],
             "sell_orders": [{"price": 1201000, "volume": 8, "count": 1}],
         },
+        now=now,
     )
     assert snapshot is not None
+    assert snapshot.timestamp == datetime(2026, 8, 29, 13, 45, 0, tzinfo=TEHRAN)
     assert in_iran_session(snapshot.timestamp)
     quote = snapshot.quotes[0]
     assert quote.last == Decimal("1200000")
