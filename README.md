@@ -449,6 +449,7 @@ python examples/backtest_ma_band.py
 python examples/backtest_two_weeks_1s.py
 python examples/backtest_month_1s.py
 python examples/simulate_iran_session_1s.py
+python examples/simulate_agah_broker.py
 python examples/backtest_bubble_rank.py
 python examples/backtest_pair_zscore.py
 python examples/fetch_tala_1s.py
