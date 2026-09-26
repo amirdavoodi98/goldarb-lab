@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Self
 
 from ..simulation.models import Side, decimal_value
 from ..strategy import Strategy, StrategyContext
@@ -25,11 +26,33 @@ class PriceMomentumStrategy(Strategy):
     ) -> None:
         self.quantity = decimal_value(quantity)
         self.threshold_pct = decimal_value(threshold_pct)
+        self._validate()
+        self._last_price: dict[str, Decimal] = {}
+
+    def _validate(self) -> None:
         if self.quantity <= ZERO:
             raise ValueError("quantity must be positive")
         if self.threshold_pct <= ZERO:
             raise ValueError("threshold_pct must be positive")
-        self._last_price: dict[str, Decimal] = {}
+
+    def set_quantity(self, quantity: Decimal | float | str) -> Self:
+        self.quantity = decimal_value(quantity)
+        self._validate()
+        return self
+
+    def set_threshold_pct(self, threshold_pct: Decimal | float | str) -> Self:
+        self.threshold_pct = decimal_value(threshold_pct)
+        self._validate()
+        return self
+
+    def configure(self, **params: object) -> Self:
+        if "quantity" in params:
+            self.set_quantity(params.pop("quantity"))  # type: ignore[arg-type]
+        if "threshold_pct" in params:
+            self.set_threshold_pct(params.pop("threshold_pct"))  # type: ignore[arg-type]
+        if params:
+            raise ValueError(f"unknown strategy param(s): {sorted(params)}")
+        return self
 
     def on_start(self, ctx: StrategyContext) -> None:
         del ctx

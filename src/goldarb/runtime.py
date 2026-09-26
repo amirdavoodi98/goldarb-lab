@@ -6,7 +6,7 @@ import os
 from datetime import datetime, time
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Self
 from zoneinfo import ZoneInfo
 
 from .client import LabClient
@@ -14,6 +14,7 @@ from .config import AppConfig, AppConfigBuilder, ModelConfig, StrategyConfig
 from .data import HistoricalDataProvider, LiveDataProvider
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
 from .execution import (
+    Broker,
     ExecutionDriver,
     FeeModel,
     FixedLatency,
@@ -29,6 +30,7 @@ from .execution import (
     SlippageModel,
 )
 from .session import grain_step
+from .simulation import RemoteSimulator
 from .sources import ArchiveDatasetSource, historical_source, live_source
 from .strategies import (
     BubbleRankStrategy,
@@ -172,6 +174,9 @@ class StrategyRunner:
         self.config = config
         self.client = client
         self._owns_client = False
+        self._broker: Broker | None = None
+        self._execution: ExecutionDriver | None = None
+        self._strategy: Strategy | None = None
 
     @classmethod
     def from_config(
@@ -187,6 +192,27 @@ class StrategyRunner:
         else:
             loaded = config
         return cls(loaded, client=client)
+
+    def set_broker(self, broker: Broker | None) -> Self:
+        """Inject a paper/remote broker; ``None`` restores mode defaults."""
+        self._broker = broker
+        return self
+
+    def set_execution(self, execution: ExecutionDriver | None) -> Self:
+        """Override market-ingress driver (LocalFeed vs ServerSide)."""
+        self._execution = execution
+        return self
+
+    def set_strategy(self, strategy: Strategy | None) -> Self:
+        """Bind a strategy instance for ``run()`` when no argument is passed."""
+        self._strategy = strategy
+        return self
+
+    def set_client(self, client: Any | None) -> Self:
+        """Use an existing ``LabClient`` (runner will not close it)."""
+        self.client = client
+        self._owns_client = False
+        return self
 
     def _client(self) -> Any:
         if self.client is not None:
@@ -261,8 +287,14 @@ class StrategyRunner:
         )
 
     def run(self, strategy: Strategy | None = None) -> RunResult:
-        """Run ``strategy``, or build it from ``config.strategy`` when omitted."""
-        built = strategy if strategy is not None else build_strategy(self.config.strategy)
+        """Run ``strategy``, or the bound/config strategy when omitted."""
+        built = (
+            strategy
+            if strategy is not None
+            else self._strategy
+            if self._strategy is not None
+            else build_strategy(self.config.strategy)
+        )
         try:
             return self._run(built)
         finally:
@@ -270,6 +302,30 @@ class StrategyRunner:
                 self.client.close()
                 self.client = None
                 self._owns_client = False
+
+    def _resolve_broker_and_execution(
+        self,
+        *,
+        slippage: SlippageModel,
+        latency: LatencyModel,
+    ) -> tuple[Broker | None, ExecutionDriver]:
+        runtime = self.config.runtime
+        if self._broker is not None:
+            if self._execution is not None:
+                return self._broker, self._execution
+            if isinstance(self._broker, RemoteSimulator):
+                return self._broker, ServerSideExecution()
+            return self._broker, LocalFeedExecution()
+
+        if runtime.mode == "live_paper_remote":
+            if not isinstance(slippage, NoSlippage) or not isinstance(latency, NoLatency):
+                raise ValueError(
+                    "remote paper matching only supports NoSlippage and NoLatency; "
+                    "configure execution effects on the server"
+                )
+            return self._client().simulation, self._execution or ServerSideExecution()
+
+        return None, self._execution or LocalFeedExecution()
 
     def _run(self, strategy: Strategy) -> RunResult:
         runtime = self.config.runtime
@@ -279,16 +335,10 @@ class StrategyRunner:
         latency = build_latency(self.config.latency)
         provider = self._live_provider() if is_live else self._historical_provider()
         engine = LiveSimulationEngine() if is_live else BacktestEngine()
-        broker = None
-        execution: ExecutionDriver = LocalFeedExecution()
-        if runtime.mode == "live_paper_remote":
-            if not isinstance(slippage, NoSlippage) or not isinstance(latency, NoLatency):
-                raise ValueError(
-                    "remote paper matching only supports NoSlippage and NoLatency; "
-                    "configure execution effects on the server"
-                )
-            broker = self._client().simulation
-            execution = ServerSideExecution()
+        broker, execution = self._resolve_broker_and_execution(
+            slippage=slippage,
+            latency=latency,
+        )
         run_config = RunConfig(
             strategy_name=self.config.strategy.name or strategy.name,
             strategy_version=self.config.strategy.version or getattr(strategy, "version", "0"),
