@@ -226,6 +226,44 @@ def test_app_config_builder_setters(tmp_path):
         AppConfig.builder().set_mode("not-a-mode")
 
 
+def test_strategy_and_runner_broker_setters(tmp_path):
+    from goldarb.simulation import LocalSimulator
+
+    write_symbol_bars(
+        tmp_path,
+        {"طلا": _bars(date(2026, 8, 29), (100, 101, 103))},
+        grain="1s",
+        start="2026-08-29",
+        end="2026-08-29",
+    )
+    strategy = (
+        PriceMomentumStrategy()
+        .set_quantity("2")
+        .set_threshold_pct("0.5")
+    )
+    assert str(strategy.quantity) == "2"
+    assert str(strategy.threshold_pct) == "0.5"
+    strategy.configure(quantity="1", threshold_pct="0.1")
+    assert str(strategy.quantity) == "1"
+
+    config = (
+        AppConfig.builder()
+        .set_archive(tmp_path, symbols=["طلا"], start="2026-08-29", end="2026-08-29")
+        .set_initial_cash("100000")
+        .set_fee("NoFee")
+        .build()
+    )
+    broker = LocalSimulator(":memory:")
+    result = (
+        StrategyRunner.from_config(config)
+        .set_broker(broker)
+        .set_strategy(strategy)
+        .run()
+    )
+    assert result.config.strategy_name == "price_momentum"
+    assert len(result.equity_history) >= 1
+
+
 def test_config_validation_and_model_registries():
     with pytest.raises(ValueError, match="runtime.mode"):
         AppConfig.from_mapping({"runtime": {"mode": "unknown"}})

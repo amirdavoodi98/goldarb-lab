@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Self
 
 from .simulation.models import (
     Fill,
@@ -196,6 +196,18 @@ class Strategy:
 
     name: str = "strategy"
     version: str = "0"
+
+    def configure(self, **params: Any) -> Self:
+        """Apply keyword params onto known attributes (chainable).
+
+        Unknown keys raise ``ValueError``. Subclasses may override for
+        typed coercion; the default assigns attributes that already exist.
+        """
+        for key, value in params.items():
+            if key.startswith("_") or not hasattr(self, key):
+                raise ValueError(f"unknown strategy param: {key!r}")
+            setattr(self, key, value)
+        return self
 
     def on_start(self, ctx: StrategyContext) -> None:
         return None
