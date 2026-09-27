@@ -488,6 +488,7 @@ python examples/fetch_tala_1s.py
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py
 python examples/fetch_usdt.py
+python examples/run_strategy_path.py
 ```
 
 ## Run tests
