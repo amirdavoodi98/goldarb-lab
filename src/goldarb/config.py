@@ -17,7 +17,12 @@ RUNTIME_MODES = {
     "offline_backtest",
     "live_paper_local",
     "live_paper_remote",
+    "live_broker",
 }
+
+# Modes that poll a live market feed. ``live_broker`` is an order destination,
+# not a data feed, and is not included here. No config defaults to it.
+LIVE_PAPER_MODES = frozenset({"live_paper_local", "live_paper_remote"})
 
 # Paper presets only. Empty means fee and allow_short come from this config.
 # ``agah`` / ``mofid`` supply those two fields unless the config set them.
@@ -121,8 +126,10 @@ class RuntimeConfig:
     """Execution mode and paper-account terms.
 
     ``broker`` is a paper preset name (``agah``, ``mofid``) or ``""``.
-    It does not select the engine. ``mode`` still chooses
-    ``LocalPaperBroker`` or ``RemoteSimulator``.
+    It does not select transport. ``agah`` alone never sends a live order.
+    Paper modes still choose ``LocalPaperBroker`` or ``RemoteSimulator``.
+    ``live_broker`` is explicit: nothing defaults to it, and it needs a
+    registered ``OrderGateway``. This phase does not add a brokerage client.
 
     ``allow_short_set`` is true when the mapping or a setter provided
     ``allow_short``. An unset flag lets an ``agah``/``mofid`` preset fill it.
@@ -280,7 +287,7 @@ class AppConfig:
         archive_provider = self.data.provider in {"jsonl", "parquet", "archive"}
         if mode == "offline_backtest" and not archive_provider:
             raise ValueError("offline_backtest requires jsonl, parquet, or archive provider")
-        if mode.startswith("live_") and archive_provider:
+        if mode in LIVE_PAPER_MODES and archive_provider:
             raise ValueError("live runtime requires a GoldArb live/API provider")
         if archive_provider and not self.data.source:
             raise ValueError("archive data provider requires data.source")
@@ -375,9 +382,10 @@ class AppConfigBuilder:
     def set_broker(self, broker: str) -> Self:
         """Paper preset code: ``""``, ``agah``, or ``mofid``.
 
-        This is not ``StrategyRunner.set_broker``. The runner still builds
-        ``LocalPaperBroker`` or ``RemoteSimulator`` from ``runtime.mode``
-        and wraps that object in an ``OrderGateway``.
+        This is not ``StrategyRunner.set_broker`` and not a live transport.
+        Paper modes still build ``LocalPaperBroker`` or ``RemoteSimulator``
+        from ``runtime.mode``. ``live_broker`` ignores this code and needs
+        a registered ``OrderGateway``.
         """
         code = str(broker or "").strip().lower()
         if code not in PAPER_BROKER_CODES:
