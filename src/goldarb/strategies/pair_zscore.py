@@ -21,14 +21,17 @@ from goldarb.signals.pair_spread import (
     PAIR_SPREAD_Z_THRESHOLD,
     compute_pair_spread_stats,
 )
-from goldarb.simulation.models import Side, decimal_value
+from goldarb.simulation.models import Fill, Side, decimal_value
 from goldarb.strategies.pairs import (
+    consume_pair_fill,
+    current_pair_intent,
     dump_premium_points,
     flatten_positions,
     history_reset_requested,
     load_premium_points,
     open_pair,
     pair_event,
+    pair_intent_pending,
     snapshot_premium,
 )
 from goldarb.strategy import Strategy, StrategyContext
@@ -153,29 +156,40 @@ class PairZScoreStrategy(Strategy):
         z_score = stats.get("z_score")
         z_f = float(z_score) if z_score is not None else None
         label = signal.get("detail_fa") or signal.get("label_fa")
-        if target == self._current_pair:
+        if target == self._current_pair or pair_intent_pending(ctx, target):
             return
 
         had_open = self._current_pair is not None
         flatten_positions(ctx, prefix=self.name)
-        opened = open_pair(
+        submitted = open_pair(
             ctx,
             target[0],
             target[1],
             capital_per_side=self.capital_per_side,
             prefix=self.name,
+            event_type="rebalance_pair" if had_open else "enter_pair",
+            gap=z_f,
+            label_fa=str(label) if label else None,
         )
-        if opened:
-            self._current_pair = target
+        if not submitted:
+            self._current_pair = None
+
+    def on_fill(self, ctx: StrategyContext, fill: Fill) -> None:
+        outcome = consume_pair_fill(ctx, fill)
+        if outcome == "opened":
+            intent = current_pair_intent(ctx)
+            if intent is None:
+                return
+            self._current_pair = (intent.long_sym, intent.short_sym)
             self._emit(
                 ctx,
-                event_type="rebalance_pair" if had_open else "enter_pair",
-                long_sym=target[0],
-                short_sym=target[1],
-                z_score=z_f,
-                label_fa=str(label) if label else None,
+                event_type=intent.event_type,
+                long_sym=intent.long_sym,
+                short_sym=intent.short_sym,
+                z_score=intent.gap,
+                label_fa=intent.label_fa,
             )
-        else:
+        elif outcome == "failed":
             self._current_pair = None
 
     def _spread_series(self, now: datetime | None = None) -> list[float]:

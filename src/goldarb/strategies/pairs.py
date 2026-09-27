@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
+from weakref import WeakKeyDictionary
 
 from goldarb.data import snapshot_close
 from goldarb.signals.stats import premium_from_row, to_float
 from goldarb.simulation.engine import QUANTITY_QUANTUM
 from goldarb.simulation.models import (
+    Fill,
     MarketSnapshot,
+    Order,
     OrderStatus,
     Quote,
     Side,
@@ -121,6 +125,85 @@ def append_premiums(
             del series[:keep]
 
 
+@dataclass
+class PairIntent:
+    """Two-leg order the strategy asked for, applied only after fills."""
+
+    long_sym: str
+    short_sym: str
+    prefix: str
+    long_order_id: str
+    short_order_id: str
+    event_type: str
+    gap: float | None
+    label_fa: str | None
+    applied: bool = False
+    failed: bool = False
+
+
+_INTENTS: WeakKeyDictionary[StrategyContext, PairIntent] = WeakKeyDictionary()
+
+_IN_FLIGHT = {
+    OrderStatus.CREATED,
+    OrderStatus.ACCEPTED,
+    OrderStatus.PARTIALLY_FILLED,
+    OrderStatus.CANCEL_PENDING,
+}
+
+_LEG_FAILED = {
+    OrderStatus.REJECTED,
+    OrderStatus.CANCELLED,
+    OrderStatus.EXPIRED,
+}
+
+PairFillOutcome = Literal["opened", "failed"]
+
+
+def current_pair_intent(ctx: StrategyContext) -> PairIntent | None:
+    return _INTENTS.get(ctx)
+
+
+def _order_by_id(ctx: StrategyContext, order_id: str) -> Order | None:
+    for order in ctx.orders():
+        if order.id == order_id:
+            return order
+    return None
+
+
+def _in_flight(order: Order) -> bool:
+    return order.status in _IN_FLIGHT
+
+
+def pair_intent_pending(ctx: StrategyContext, target: tuple[str, str]) -> bool:
+    """True while this pair is submitted and at least one leg can still fill."""
+    intent = _INTENTS.get(ctx)
+    if intent is None or intent.applied or intent.failed:
+        return False
+    if (intent.long_sym, intent.short_sym) != target:
+        return False
+    for order_id in (intent.long_order_id, intent.short_order_id):
+        order = _order_by_id(ctx, order_id)
+        if order is not None and _in_flight(order):
+            return True
+    return False
+
+
+def _cancel_in_flight(ctx: StrategyContext, intent: PairIntent) -> None:
+    for order_id in (intent.long_order_id, intent.short_order_id):
+        order = _order_by_id(ctx, order_id)
+        if order is not None and _in_flight(order):
+            ctx.cancel_order(order.id)
+    intent.failed = True
+
+
+def _awaiting_fill(long_order: Order, short_order: Order) -> bool:
+    if long_order.status == OrderStatus.FILLED and short_order.status == OrderStatus.FILLED:
+        return True
+    if _in_flight(long_order) or _in_flight(short_order):
+        return True
+    return long_order.filled_quantity > ZERO or short_order.filled_quantity > ZERO
+
+
 def flatten_positions(ctx: StrategyContext, *, prefix: str) -> None:
     market = ctx.market
     event_id = "" if market is None else market.event_id
@@ -145,7 +228,16 @@ def open_pair(
     *,
     capital_per_side: Decimal | float | str,
     prefix: str,
+    event_type: str = "enter_pair",
+    gap: float | None = None,
+    label_fa: str | None = None,
 ) -> bool:
+    """Submit both legs and record the intent. Fills update the pair in ``on_fill``.
+
+    A same-tick status other than ``FILLED`` is not a failure and does not flatten.
+    Returns False only when the orders were not submitted, or both legs are already
+    terminal with no quantity filled.
+    """
     market = ctx.market
     if market is None:
         return False
@@ -158,6 +250,13 @@ def open_pair(
     long_qty = _order_quantity(capital / long_px)
     if short_qty <= ZERO or long_qty <= ZERO:
         return False
+    target = (long_sym, short_sym)
+    previous = _INTENTS.get(ctx)
+    if previous is not None and not previous.applied and not previous.failed:
+        if pair_intent_pending(ctx, target):
+            return True
+        if (previous.long_sym, previous.short_sym) != target:
+            _cancel_in_flight(ctx, previous)
     event_id = market.event_id
     short_order = ctx.submit_order(
         symbol=short_sym,
@@ -171,13 +270,47 @@ def open_pair(
         quantity=long_qty,
         client_order_id=f"{prefix}:long:{event_id}:{long_sym}",
     )
+    intent = PairIntent(
+        long_sym=long_sym,
+        short_sym=short_sym,
+        prefix=prefix,
+        long_order_id=long_order.id,
+        short_order_id=short_order.id,
+        event_type=event_type,
+        gap=gap,
+        label_fa=label_fa,
+    )
+    _INTENTS[ctx] = intent
+    if not _awaiting_fill(long_order, short_order):
+        intent.failed = True
+        return False
+    return True
+
+
+def consume_pair_fill(ctx: StrategyContext, fill: Fill) -> PairFillOutcome | None:
+    """Update a recorded pair from a fill. Flatten a filled leg if the other died."""
+    intent = _INTENTS.get(ctx)
+    if intent is None or intent.applied or intent.failed:
+        return None
+    if fill.order_id not in {intent.long_order_id, intent.short_order_id}:
+        return None
+    long_order = _order_by_id(ctx, intent.long_order_id)
+    short_order = _order_by_id(ctx, intent.short_order_id)
+    if long_order is None or short_order is None:
+        return None
     if (
-        short_order.status == OrderStatus.FILLED
-        and long_order.status == OrderStatus.FILLED
+        long_order.status == OrderStatus.FILLED
+        and short_order.status == OrderStatus.FILLED
     ):
-        return True
-    flatten_positions(ctx, prefix=prefix)
-    return False
+        intent.applied = True
+        return "opened"
+    if long_order.status in _LEG_FAILED or short_order.status in _LEG_FAILED:
+        filled = long_order.filled_quantity > ZERO or short_order.filled_quantity > ZERO
+        intent.failed = True
+        if filled:
+            flatten_positions(ctx, prefix=intent.prefix)
+        return "failed"
+    return None
 
 
 def pair_event(

@@ -18,15 +18,18 @@ from goldarb.signals.bubble_rank import (
     BUBBLE_RANK_WINDOW_DAYS,
     compute_rankings,
 )
-from goldarb.simulation.models import Side, decimal_value
+from goldarb.simulation.models import Fill, Side, decimal_value
 from goldarb.strategies.pairs import (
     append_premiums,
+    consume_pair_fill,
+    current_pair_intent,
     dump_premium_points,
     flatten_positions,
     history_reset_requested,
     load_premium_points,
     open_pair,
     pair_event,
+    pair_intent_pending,
     premiums_on_snapshot,
     window_values,
 )
@@ -127,29 +130,40 @@ class BubbleRankStrategy(Strategy):
         gap = pair.get("gap")
         gap_f = float(gap) if gap is not None else None
         label = pair.get("label_fa")
-        if target == self._current_pair:
+        if target == self._current_pair or pair_intent_pending(ctx, target):
             return
 
         had_open = self._current_pair is not None
         flatten_positions(ctx, prefix=self.name)
-        opened = open_pair(
+        submitted = open_pair(
             ctx,
             target[0],
             target[1],
             capital_per_side=self.capital_per_side,
             prefix=self.name,
+            event_type="rebalance_pair" if had_open else "enter_pair",
+            gap=gap_f,
+            label_fa=str(label) if label else None,
         )
-        if opened:
-            self._current_pair = target
+        if not submitted:
+            self._current_pair = None
+
+    def on_fill(self, ctx: StrategyContext, fill: Fill) -> None:
+        outcome = consume_pair_fill(ctx, fill)
+        if outcome == "opened":
+            intent = current_pair_intent(ctx)
+            if intent is None:
+                return
+            self._current_pair = (intent.long_sym, intent.short_sym)
             self._emit(
                 ctx,
-                event_type="rebalance_pair" if had_open else "enter_pair",
-                long_sym=target[0],
-                short_sym=target[1],
-                gap=gap_f,
-                label_fa=str(label) if label else None,
+                event_type=intent.event_type,
+                long_sym=intent.long_sym,
+                short_sym=intent.short_sym,
+                gap=intent.gap,
+                label_fa=intent.label_fa,
             )
-        else:
+        elif outcome == "failed":
             self._current_pair = None
 
     def _emit(

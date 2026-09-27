@@ -7,9 +7,9 @@ from decimal import Decimal
 
 from goldarb import BacktestEngine, BubbleRankStrategy, RunConfig
 from goldarb.data import HistoricalDataProvider, cross_section_1s
-from goldarb.execution import PercentFee
+from goldarb.execution import FixedLatency, PercentFee
 from goldarb.signals.bubble_rank import compute_rankings, compute_symbol_score
-from goldarb.simulation import LocalSimulator, Side
+from goldarb.simulation import LocalSimulator, MarketSnapshot, OrderStatus, Quote, Side
 from goldarb.universe import GOLD_FUND_SYMBOLS
 
 
@@ -187,3 +187,181 @@ def test_calendar_window_drops_old_1s_ticks(tmp_path):
     assert strategy.last_ranking is not None
     for row in strategy.last_ranking["rankings"]:
         assert row["sample_count"] <= 5
+
+
+def _ranked_snapshots(
+    premiums: list[tuple[float, float]],
+    *,
+    blank_short_from: int | None = None,
+) -> list[MarketSnapshot]:
+    origin = datetime(2026, 8, 29, 8, 30, tzinfo=UTC)
+    snapshots: list[MarketSnapshot] = []
+    for index, (prem_long, prem_short) in enumerate(premiums):
+        short_last = (
+            None
+            if blank_short_from is not None and index >= blank_short_from
+            else Decimal("12000")
+        )
+        timestamp = origin + timedelta(seconds=index)
+        snapshots.append(
+            MarketSnapshot(
+                event_id=f"bubble:{index}",
+                timestamp=timestamp,
+                quotes=(
+                    Quote(
+                        symbol="طلا",
+                        last=Decimal("10000"),
+                        premium=Decimal(str(prem_long)),
+                    ),
+                    Quote(
+                        symbol="زر",
+                        last=short_last,
+                        premium=Decimal(str(prem_short)),
+                    ),
+                ),
+            )
+        )
+    return snapshots
+
+
+def _run_ranked(strategy, snapshots, tmp_path, name, *, latency_ms=0, on_event=None):
+    return BacktestEngine().run(
+        strategy,
+        HistoricalDataProvider(snapshots),
+        RunConfig(
+            strategy_name="bubble_rank",
+            initial_cash="1000000",
+            allow_short=True,
+        ),
+        simulator=LocalSimulator(tmp_path / name),
+        fee=PercentFee("0"),
+        latency=FixedLatency(latency_ms),
+        on_event=on_event,
+    )
+
+
+def _bubble():
+    return BubbleRankStrategy(
+        capital_per_side="100000",
+        min_samples=10,
+        min_gap=1.0,
+        window_days=20,
+    )
+
+
+def test_open_pair_fills_on_a_later_tick_when_latency_is_set(tmp_path):
+    premiums = [(0.0, 0.0)] * 11 + [(-3.0, 3.0)] * 8
+    strategy = _bubble()
+    result = _run_ranked(
+        strategy,
+        _ranked_snapshots(premiums),
+        tmp_path,
+        "latency.db",
+        latency_ms=2500,
+    )
+    assert [item["type"] for item in strategy.events] == ["enter_pair"]
+    assert len(result.orders) == 2
+    assert all(order.status == OrderStatus.FILLED for order in result.orders)
+    assert not any("flatten" in order.client_order_id for order in result.orders)
+    buy = next(order for order in result.orders if order.side == Side.BUY)
+    buy_fill = next(fill for fill in result.fills if fill.order_id == buy.id)
+    assert buy_fill.filled_at > buy.submitted_at
+    held = {item.symbol: item.quantity for item in result.portfolio.positions}
+    assert held["طلا"] > 0
+    assert held["زر"] < 0
+    assert strategy._current_pair == ("طلا", "زر")
+
+
+def test_open_pair_fills_both_legs_with_zero_latency(tmp_path):
+    premiums = [(0.0, 0.0)] * 11 + [(-3.0, 3.0)] * 8
+    strategy = _bubble()
+    result = _run_ranked(
+        strategy,
+        _ranked_snapshots(premiums),
+        tmp_path,
+        "instant.db",
+        latency_ms=0,
+    )
+    assert [item["type"] for item in strategy.events] == ["enter_pair"]
+    assert len(result.orders) == 2
+    assert all(order.status == OrderStatus.FILLED for order in result.orders)
+    buy = next(order for order in result.orders if order.side == Side.BUY)
+    buy_fill = next(fill for fill in result.fills if fill.order_id == buy.id)
+    assert buy_fill.filled_at == buy.submitted_at
+    held = {item.symbol: item.quantity for item in result.portfolio.positions}
+    assert held["طلا"] > 0
+    assert held["زر"] < 0
+
+
+def test_price_unavailable_second_leg_closes_the_filled_leg(tmp_path):
+    premiums = [(0.0, 0.0)] * 11 + [(-3.0, 3.0)] + [(0.0, 0.0)] * 10
+    strategy = _bubble()
+    result = _run_ranked(
+        strategy,
+        _ranked_snapshots(premiums, blank_short_from=12),
+        tmp_path,
+        "unpriced.db",
+        latency_ms=2500,
+    )
+    short = next(
+        order
+        for order in result.orders
+        if order.symbol == "زر"
+        and order.side == Side.SELL
+        and "flatten" not in order.client_order_id
+    )
+    assert short.status == OrderStatus.REJECTED
+    assert short.rejection_code == "price_unavailable"
+    assert any(
+        order.symbol == "طلا" and order.side == Side.BUY and order.status == OrderStatus.FILLED
+        for order in result.orders
+    )
+    flats = [order for order in result.orders if "flatten" in order.client_order_id]
+    assert len(flats) == 1
+    assert flats[0].symbol == "طلا"
+    assert flats[0].status == OrderStatus.FILLED
+    assert strategy.events == []
+    assert strategy._current_pair is None
+    for position in result.portfolio.positions:
+        assert position.quantity == 0
+
+
+def test_cancelled_second_leg_closes_the_filled_leg(tmp_path):
+    premiums = [(0.0, 0.0)] * 11 + [(-3.0, 3.0)] + [(0.0, 0.0)] * 10
+
+    def _cancel_resting_short(kind, ctx):
+        if kind != "tick":
+            return
+        for order in ctx.orders():
+            if (
+                order.symbol == "زر"
+                and order.side == Side.SELL
+                and order.status == OrderStatus.CREATED
+            ):
+                ctx.cancel_order(order.id)
+
+    strategy = _bubble()
+    result = _run_ranked(
+        strategy,
+        _ranked_snapshots(premiums),
+        tmp_path,
+        "cancel.db",
+        latency_ms=2500,
+        on_event=_cancel_resting_short,
+    )
+    short = next(
+        order
+        for order in result.orders
+        if order.symbol == "زر"
+        and order.side == Side.SELL
+        and "flatten" not in order.client_order_id
+    )
+    assert short.status == OrderStatus.CANCELLED
+    flats = [order for order in result.orders if "flatten" in order.client_order_id]
+    assert len(flats) == 1
+    assert flats[0].symbol == "طلا"
+    assert flats[0].status == OrderStatus.FILLED
+    assert strategy.events == []
+    assert strategy._current_pair is None
+    for position in result.portfolio.positions:
+        assert position.quantity == 0
