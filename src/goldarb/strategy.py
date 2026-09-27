@@ -1,7 +1,8 @@
 """Environment-agnostic Strategy contract.
 
-A Strategy talks only to ``StrategyContext``. Engines feed market data into a
-``PaperBroker`` (typically ``LocalSimulator``) and then call the strategy.
+A Strategy talks only to ``StrategyContext``. Order submit and cancel go
+through ``OrderGateway``. Engines still feed market data into the paper
+broker and keep ``create_account`` / ``equity_history`` there.
 """
 
 from __future__ import annotations
@@ -12,6 +13,18 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Self
 
+from .execution_policy import (
+    REMOTE_POLICY_ERROR,
+    ExecutionPolicy,
+    NoOpExecutionPolicy,
+    RawOrder,
+    policy_is_noop,
+)
+from .gateway import (
+    OrderGateway,
+    RemoteSimulatorOrderGateway,
+    order_gateway_for,
+)
 from .simulation.models import (
     Fill,
     MarketSnapshot,
@@ -20,8 +33,10 @@ from .simulation.models import (
     OrderType,
     Portfolio,
     Position,
+    Quote,
     Side,
 )
+from .simulation.remote import RemoteSimulator
 
 _OPEN = (
     OrderStatus.OPEN,
@@ -56,10 +71,16 @@ class StrategyContext:
         account_id: str,
         *,
         config: Mapping[str, Any] | None = None,
+        execution_policy: ExecutionPolicy | None = None,
+        quote_fill: str = "last",
+        gateway: OrderGateway | None = None,
     ) -> None:
         self._broker = broker
         self.account_id = account_id
         self.config: dict[str, Any] = dict(config or {})
+        self._policy: ExecutionPolicy = execution_policy or NoOpExecutionPolicy()
+        self._quote_fill = quote_fill
+        self._gateway = gateway
         self._market: MarketSnapshot | None = None
         self._clock: datetime | None = None
         self._portfolio_cache: Portfolio | None = None
@@ -104,6 +125,31 @@ class StrategyContext:
     def fills(self) -> list[Fill]:
         return self._broker.list_fills(self.account_id)
 
+    def _quote_for(self, symbol: str) -> Quote | None:
+        market = self._market
+        if market is None:
+            return None
+        for quote in market.quotes:
+            if quote.symbol == symbol:
+                return quote
+        return None
+
+    @property
+    def order_gateway(self) -> OrderGateway | None:
+        """Gateway bound for this run. None until one is injected or used."""
+        return self._gateway
+
+    def _order_gateway(self) -> OrderGateway:
+        """Gateway injected by ``StrategyRunner``, or a wrap of this paper broker."""
+        if self._gateway is None:
+            self._gateway = order_gateway_for(self._broker, self.account_id)
+        return self._gateway
+
+    def _remote_paper(self) -> bool:
+        return isinstance(self._broker, RemoteSimulator) or isinstance(
+            self._gateway, RemoteSimulatorOrderGateway
+        )
+
     def submit_order(
         self,
         *,
@@ -114,16 +160,43 @@ class StrategyContext:
         limit_price: Decimal | float | str | None = None,
         client_order_id: str | None = None,
     ) -> Order:
-        order = self._broker.submit_order(
-            self.account_id,
-            symbol=symbol,
-            side=side,
-            quantity=quantity,
-            order_type=order_type,
-            limit_price=limit_price,
-            client_order_id=client_order_id,
-        )
+        # NoOp keeps the gateway call unchanged, including remote paper.
+        # A real policy rewrites type, limit, size, and time_in_force first.
+        gateway = self._order_gateway()
+        if policy_is_noop(self._policy):
+            order = gateway.submit(
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                order_type=order_type,
+                limit_price=limit_price,
+                client_order_id=client_order_id,
+            )
+        else:
+            if self._remote_paper():
+                raise ValueError(REMOTE_POLICY_ERROR)
+            paper = self._policy.translate(
+                RawOrder(
+                    symbol=symbol,
+                    side=Side(str(side).upper()),
+                    quantity=Decimal(str(quantity)),
+                    order_type=OrderType(str(order_type).upper()),
+                    limit_price=None if limit_price is None else Decimal(str(limit_price)),
+                ),
+                quote=self._quote_for(symbol),
+                quote_fill=self._quote_fill,
+            )
+            order = gateway.submit(
+                symbol=symbol,
+                side=side,
+                quantity=paper.quantity,
+                order_type=paper.order_type,
+                limit_price=paper.limit_price,
+                client_order_id=client_order_id,
+                time_in_force=paper.time_in_force,
+            )
         self._portfolio_cache = None
+        limit = "" if order.limit_price is None else format(order.limit_price, "f")
         self.record(
             "order",
             {
@@ -132,12 +205,16 @@ class StrategyContext:
                 "side": order.side.value,
                 "status": order.status.value,
                 "quantity": str(order.quantity),
+                "gateway": type(gateway).__name__,
+                "order_type": order.order_type.value,
+                "limit_price": limit,
+                "filled_quantity": format(order.filled_quantity, "f"),
             },
         )
         return order
 
     def cancel_order(self, order_id: str) -> Order:
-        order = self._broker.cancel_order(self.account_id, order_id)
+        order = self._order_gateway().cancel(order_id)
         self._portfolio_cache = None
         self.record("cancel", {"order_id": order.id, "status": order.status.value})
         return order

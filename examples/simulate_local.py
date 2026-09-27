@@ -1,4 +1,8 @@
-"""Run a strategy-independent paper order with no network access."""
+"""Direct paper, not the Strategy path.
+
+Run a strategy-independent paper order with no network access.
+Orders go through ``submit_buy``, not ``OrderGateway``.
+"""
 
 from datetime import UTC, datetime
 from decimal import Decimal
