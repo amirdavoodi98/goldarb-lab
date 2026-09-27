@@ -134,6 +134,11 @@ class StrategyContext:
                 return quote
         return None
 
+    @property
+    def order_gateway(self) -> OrderGateway | None:
+        """Gateway bound for this run. None until one is injected or used."""
+        return self._gateway
+
     def _order_gateway(self) -> OrderGateway:
         """Gateway injected by ``StrategyRunner``, or a wrap of this paper broker."""
         if self._gateway is None:
@@ -157,8 +162,9 @@ class StrategyContext:
     ) -> Order:
         # NoOp keeps the gateway call unchanged, including remote paper.
         # A real policy rewrites type, limit, size, and time_in_force first.
+        gateway = self._order_gateway()
         if policy_is_noop(self._policy):
-            order = self._order_gateway().submit(
+            order = gateway.submit(
                 symbol=symbol,
                 side=side,
                 quantity=quantity,
@@ -180,7 +186,7 @@ class StrategyContext:
                 quote=self._quote_for(symbol),
                 quote_fill=self._quote_fill,
             )
-            order = self._order_gateway().submit(
+            order = gateway.submit(
                 symbol=symbol,
                 side=side,
                 quantity=paper.quantity,
@@ -190,6 +196,7 @@ class StrategyContext:
                 time_in_force=paper.time_in_force,
             )
         self._portfolio_cache = None
+        limit = "" if order.limit_price is None else format(order.limit_price, "f")
         self.record(
             "order",
             {
@@ -198,6 +205,10 @@ class StrategyContext:
                 "side": order.side.value,
                 "status": order.status.value,
                 "quantity": str(order.quantity),
+                "gateway": type(gateway).__name__,
+                "order_type": order.order_type.value,
+                "limit_price": limit,
+                "filled_quantity": format(order.filled_quantity, "f"),
             },
         )
         return order
