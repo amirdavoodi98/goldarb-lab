@@ -1,4 +1,8 @@
-"""Trade through Agah on the local paper simulator with no network access."""
+"""Direct paper, not the Strategy path.
+
+Trade through Agah on the local paper simulator with no network access.
+Orders go through ``submit_buy``, not ``OrderGateway``.
+"""
 
 from datetime import UTC, datetime
 from decimal import Decimal
