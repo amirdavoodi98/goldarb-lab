@@ -26,6 +26,7 @@ from .execution import (
     PercentFee,
     SlippageModel,
 )
+from .execution_policy import ExecutionPolicy
 from .simulation.engine import ZERO
 from .simulation.local import LocalSimulator
 from .simulation.models import (
@@ -174,6 +175,8 @@ class SimulationLoop:
         execution: ExecutionDriver | None = None,
         config: dict[str, Any] | None = None,
         on_event: OnEvent | None = None,
+        execution_policy: ExecutionPolicy | None = None,
+        quote_fill: str = "last",
     ) -> None:
         self.broker = broker
         self.account_id = account_id
@@ -182,7 +185,13 @@ class SimulationLoop:
         self.latency = latency
         self.execution = execution or LocalFeedExecution()
         self.on_event = on_event
-        self.ctx = StrategyContext(broker, account_id, config=config)
+        self.ctx = StrategyContext(
+            broker,
+            account_id,
+            config=config,
+            execution_policy=execution_policy,
+            quote_fill=quote_fill,
+        )
         self.strategy.on_start(self.ctx)
         self._seen_fill_ids = {fill.id for fill in self.broker.list_fills(self.account_id)}
 
@@ -197,6 +206,8 @@ class SimulationLoop:
         )
         # Execution slippage/latency belong on the local paper order path
         # (LocalPaperBroker pipeline), not on market snapshots here.
+        # ExecutionPolicy rewrites the order inside submit_order, before
+        # the broker. QuoteMatching still matches that stored order.
         self.execution.on_market(self.broker, snapshot)
         self._notify_new_fills()
         self.strategy.on_market_data(self.ctx)
@@ -242,6 +253,8 @@ class SimulationEngine:
         latency: LatencyModel | None = None,
         execution: ExecutionDriver | None = None,
         on_event: OnEvent | None = None,
+        execution_policy: ExecutionPolicy | None = None,
+        quote_fill: str = "last",
     ) -> RunResult:
         fee_model = fee or PercentFee(config.fee_rate or "0.0005")
         slippage_model = slippage or NoSlippage()
@@ -290,6 +303,8 @@ class SimulationEngine:
                 execution=execution,
                 config=ctx_config,
                 on_event=on_event,
+                execution_policy=execution_policy,
+                quote_fill=quote_fill,
             )
             for snapshot in _iter_events(provider):
                 loop.process(snapshot)

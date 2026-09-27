@@ -221,6 +221,9 @@ class AppConfig:
     )
     slippage: ModelConfig = field(default_factory=lambda: ModelConfig("NoSlippage"))
     latency: ModelConfig = field(default_factory=lambda: ModelConfig("NoLatency"))
+    # ``NoOp`` leaves strategy orders unchanged. ``OffsetLimit`` rounds size
+    # and rewrites MARKET to LIMIT. Params are not brokerage protocol numbers.
+    execution_policy: ModelConfig = field(default_factory=lambda: ModelConfig("NoOp"))
     # True when ``fee`` was present in the file or set_fee was called.
     fee_set: bool = False
 
@@ -244,6 +247,7 @@ class AppConfig:
             fee=ModelConfig.from_value(item.get("fee"), "PercentFee"),
             slippage=ModelConfig.from_value(item.get("slippage"), "NoSlippage"),
             latency=ModelConfig.from_value(item.get("latency"), "NoLatency"),
+            execution_policy=ModelConfig.from_value(item.get("execution_policy"), "NoOp"),
             fee_set="fee" in item,
         )
         config.validate()
@@ -320,6 +324,9 @@ class AppConfigBuilder:
         self._fee_set = bool(seed.fee_set)
         self._slippage = ModelConfig(seed.slippage.name, dict(seed.slippage.params))
         self._latency = ModelConfig(seed.latency.name, dict(seed.latency.params))
+        self._execution_policy = ModelConfig(
+            seed.execution_policy.name, dict(seed.execution_policy.params)
+        )
 
     # --- load / merge -------------------------------------------------
 
@@ -339,6 +346,9 @@ class AppConfigBuilder:
         self._fee_set = bool(loaded.fee_set)
         self._slippage = ModelConfig(loaded.slippage.name, dict(loaded.slippage.params))
         self._latency = ModelConfig(loaded.latency.name, dict(loaded.latency.params))
+        self._execution_policy = ModelConfig(
+            loaded.execution_policy.name, dict(loaded.execution_policy.params)
+        )
         return self
 
     # --- runtime ------------------------------------------------------
@@ -658,6 +668,16 @@ class AppConfigBuilder:
         self._latency = ModelConfig(str(name), dict(params))
         return self
 
+    def set_execution_policy(self, name: str = "NoOp", **params: Any) -> Self:
+        """Paper venue translation. ``NoOp`` or ``OffsetLimit``.
+
+        ``OffsetLimit`` params: ``quantity_quantum``, ``price_tick``,
+        ``min_quantity``, ``market_offset``, ``time_in_force``.
+        Omit a tick, minimum, or offset rather than copying an exchange schedule.
+        """
+        self._execution_policy = ModelConfig(str(name), dict(params))
+        return self
+
     # --- finish -------------------------------------------------------
 
     def build(self) -> AppConfig:
@@ -669,6 +689,9 @@ class AppConfigBuilder:
             fee=ModelConfig(self._fee.name, dict(self._fee.params)),
             slippage=ModelConfig(self._slippage.name, dict(self._slippage.params)),
             latency=ModelConfig(self._latency.name, dict(self._latency.params)),
+            execution_policy=ModelConfig(
+                self._execution_policy.name, dict(self._execution_policy.params)
+            ),
             fee_set=self._fee_set,
         )
         config.validate()
