@@ -93,6 +93,7 @@ class ArchiveDatasetSource:
         session_zone: ZoneInfo = TEHRAN,
         session_open: time = SESSION_OPEN,
         session_close: time = SESSION_CLOSE,
+        quote_fill: str = "last",
     ) -> HistoricalDataProvider:
         try:
             manifest = self.store.read_manifest()
@@ -117,6 +118,7 @@ class ArchiveDatasetSource:
             session_zone=session_zone,
             session_open=session_open,
             session_close=session_close,
+            quote_fill=quote_fill,
         )
 
 

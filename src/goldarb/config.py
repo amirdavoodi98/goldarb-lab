@@ -19,6 +19,11 @@ RUNTIME_MODES = {
     "live_paper_remote",
 }
 
+# How bid/ask are shaped before a MarketSnapshot is built.
+# ``last`` clears the book so matching falls back to last (close-fill backtests).
+# ``book`` keeps a real touch and copies last into bid/ask when the book is missing.
+QUOTE_FILL_MODES = frozenset({"last", "book"})
+
 
 def _mapping(value: Any, name: str) -> dict[str, Any]:
     if value is None:
@@ -55,6 +60,16 @@ class ModelConfig:
 
 @dataclass(frozen=True)
 class DataConfig:
+    """Market-data selection and quote touch rule.
+
+    ``quote_fill`` is applied before a snapshot is built:
+
+    - ``last`` (default): clear bid and ask so ``QuoteMatching`` falls back
+      to last. Existing close-fill backtests stay on last.
+    - ``book``: keep a real bid/ask. When there is no book, copy last into
+      bid and ask.
+    """
+
     provider: str = "goldarb_api"
     source: str = ""
     dataset: str = "fund-bars"
@@ -64,6 +79,14 @@ class DataConfig:
     end: str | None = None
     fill_session: bool = True
     session_hours: bool = True
+    quote_fill: str = "last"
+
+    def __post_init__(self) -> None:
+        mode = str(self.quote_fill).strip().lower()
+        if mode not in QUOTE_FILL_MODES:
+            raise ValueError("data.quote_fill must be 'last' or 'book'")
+        if mode != self.quote_fill:
+            object.__setattr__(self, "quote_fill", mode)
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any] | None) -> Self:
@@ -85,6 +108,7 @@ class DataConfig:
             end=None if item.get("end") is None else str(item["end"]),
             fill_session=bool(item.get("fill_session", True)),
             session_hours=bool(item.get("session_hours", True)),
+            quote_fill=str(item.get("quote_fill") or "last"),
         )
 
 
@@ -380,6 +404,14 @@ class AppConfigBuilder:
         self._data = replace(self._data, session_hours=bool(enabled))
         return self
 
+    def set_quote_fill(self, quote_fill: str) -> Self:
+        """``last`` (default) or ``book``. See ``DataConfig.quote_fill``."""
+        mode = str(quote_fill).strip().lower()
+        if mode not in QUOTE_FILL_MODES:
+            raise ValueError("data.quote_fill must be 'last' or 'book'")
+        self._data = replace(self._data, quote_fill=mode)
+        return self
+
     def set_data(
         self,
         *,
@@ -392,6 +424,7 @@ class AppConfigBuilder:
         end: str | None = ...,  # type: ignore[assignment]
         fill_session: bool | None = None,
         session_hours: bool | None = None,
+        quote_fill: str | None = None,
     ) -> Self:
         if provider is not None:
             self.set_provider(provider)
@@ -411,6 +444,8 @@ class AppConfigBuilder:
             self.set_fill_session(fill_session)
         if session_hours is not None:
             self.set_session_hours(session_hours)
+        if quote_fill is not None:
+            self.set_quote_fill(quote_fill)
         return self
 
     def set_archive(
@@ -574,6 +609,7 @@ __all__ = [
     "AppConfigBuilder",
     "DataConfig",
     "ModelConfig",
+    "QUOTE_FILL_MODES",
     "RUNTIME_MODES",
     "RuntimeConfig",
     "SessionConfig",

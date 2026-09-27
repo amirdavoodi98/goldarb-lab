@@ -1,7 +1,8 @@
 """Backtest and live-simulation engines sharing one event loop.
 
 The strategy never sees the data source or broker type. Both engines feed
-``LocalSimulator`` (or any ``PaperBroker``) after applying slippage and latency.
+snapshots through unchanged. Slippage is ``SlippageModel.adjust_fill_price``
+on the order path, not ``apply_snapshot`` inside the loop.
 """
 
 from __future__ import annotations

@@ -4,9 +4,9 @@ Order-path paper venue (LocalPaperBroker) uses:
 
     MatchingEngine → SlippageModel.adjust_fill_price → FeeModel → PortfolioService
 
-``SimulationLoop`` may still apply snapshot-level slippage/latency before
-``feed()``; keep those as NoOp when broker-level models are configured
-(see docs/adr/0001-paper-broker-lifecycle.md).
+``SimulationLoop`` feeds snapshots unchanged. Slippage stays on
+``SlippageModel.adjust_fill_price`` via ``ExecutionPipeline``. The loop does
+not call ``apply_snapshot`` (see docs/adr/0001-paper-broker-lifecycle.md).
 """
 
 from __future__ import annotations

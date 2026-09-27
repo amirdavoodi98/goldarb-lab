@@ -244,6 +244,7 @@ class StrategyRunner:
                 session_zone=zone,
                 session_open=open_at,
                 session_close=close_at,
+                quote_fill=data.quote_fill,
             )
         rows = source.bars(
             data.symbols,
@@ -261,6 +262,7 @@ class StrategyRunner:
             session_zone=zone,
             session_open=open_at,
             session_close=close_at,
+            quote_fill=data.quote_fill,
         )
 
     def _live_provider(self) -> LiveDataProvider:
@@ -284,6 +286,7 @@ class StrategyRunner:
             session_zone=zone,
             session_open=open_parts,
             session_close=stop_parts,
+            quote_fill=data.quote_fill,
         )
 
     def run(self, strategy: Strategy | None = None) -> RunResult:
