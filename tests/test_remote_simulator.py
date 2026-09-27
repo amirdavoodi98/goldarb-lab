@@ -178,6 +178,41 @@ def test_remote_fill_updates_portfolio_and_bakes_server_fee_slippage():
     assert port.cash == Decimal("10000") - fill.price - fill.fee
 
 
+def test_remote_order_gateway_does_not_call_feed():
+    from goldarb.gateway import RemoteSimulatorOrderGateway
+
+    venue = _venue(fee_rate=Decimal("0"))
+    remote = RemoteSimulator(venue)
+    account = remote.create_account(initial_cash="10000", fee_rate="0")
+    fed: list[str] = []
+
+    def spy_feed(snapshot: object) -> bool:
+        fed.append("feed")
+        del snapshot
+        return False
+
+    remote.feed = spy_feed  # type: ignore[method-assign]
+    gateway = RemoteSimulatorOrderGateway(remote, account.id)
+    order = gateway.submit(
+        symbol="طلا",
+        side="BUY",
+        quantity="1",
+        order_type="LIMIT",
+        limit_price="90",
+        client_order_id="gateway-remote",
+    )
+    assert order.status == OrderStatus.ACCEPTED
+    assert fed == []
+    snap = MarketSnapshot(
+        event_id="local-feed",
+        timestamp=datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+        quotes=(Quote(symbol="طلا", ask=Decimal("100"), last=Decimal("100")),),
+    )
+    assert RemoteSimulator.feed(remote, snap) is False
+    assert gateway.positions() == ()
+    assert gateway.cash() == Decimal("10000")
+
+
 def test_remote_feed_does_not_trigger_local_matching():
     venue = _venue(fee_rate=Decimal("0"))
     remote = RemoteSimulator(venue)

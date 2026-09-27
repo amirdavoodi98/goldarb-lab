@@ -1,5 +1,8 @@
 """Offline ``premium_threshold`` backtest (Lab F-10 template, long-only).
 
+Outside the Strategy contract: this does not use ``StrategyContext`` or
+``OrderGateway``.
+
 Rules (defaults match platform Lab):
 - Enter long when premium ≤ ``buy_lte`` (−2%).
 - Exit when held premium ≥ ``sell_gte`` (+2%).

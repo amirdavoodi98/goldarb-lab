@@ -37,9 +37,11 @@ from .execution_policy import (
     OffsetLimitPolicy,
     policy_is_noop,
 )
+from .gateway import OrderGateway, order_gateway_for
 from .session import grain_step
 from .simulation import RemoteSimulator
 from .simulation.brokers import get_broker
+from .simulation.paper_broker import LocalPaperBroker
 from .sources import ArchiveDatasetSource, historical_source, live_source
 from .strategies import (
     BubbleRankStrategy,
@@ -396,16 +398,29 @@ class StrategyRunner:
     def _resolve_broker_and_execution(
         self,
         *,
+        fee: FeeModel,
         slippage: SlippageModel,
         latency: LatencyModel,
-    ) -> tuple[Broker | None, ExecutionDriver]:
+    ) -> tuple[Broker, ExecutionDriver, OrderGateway, bool]:
+        """Build the paper engine, its ingress, and the only OrderGateway.
+
+        ``runtime.broker`` is not transport. ``runtime.mode`` is:
+        ``backtest``, ``offline_backtest``, and ``live_paper_local`` use
+        ``LocalPaperOrderGateway``; ``live_paper_remote`` uses
+        ``RemoteSimulatorOrderGateway``. An injected ``set_broker`` object
+        keeps its own type. The bool is true when this method opened the
+        local database and must close it.
+        """
         runtime = self.config.runtime
         if self._broker is not None:
-            if self._execution is not None:
-                return self._broker, self._execution
-            if isinstance(self._broker, RemoteSimulator):
-                return self._broker, ServerSideExecution()
-            return self._broker, LocalFeedExecution()
+            execution = self._execution
+            if execution is None:
+                execution = (
+                    ServerSideExecution()
+                    if isinstance(self._broker, RemoteSimulator)
+                    else LocalFeedExecution()
+                )
+            return self._broker, execution, order_gateway_for(self._broker), False
 
         if runtime.mode == "live_paper_remote":
             if not isinstance(slippage, NoSlippage) or not isinstance(latency, NoLatency):
@@ -413,9 +428,21 @@ class StrategyRunner:
                     "remote paper matching only supports NoSlippage and NoLatency; "
                     "configure execution effects on the server"
                 )
-            return self._client().simulation, self._execution or ServerSideExecution()
+            remote = self._client().simulation
+            return (
+                remote,
+                self._execution or ServerSideExecution(),
+                order_gateway_for(remote),
+                False,
+            )
 
-        return None, self._execution or LocalFeedExecution()
+        local = LocalPaperBroker(
+            runtime.database or ":memory:",
+            fee=fee,
+            slippage=slippage,
+            latency=latency,
+        )
+        return local, self._execution or LocalFeedExecution(), order_gateway_for(local), True
 
     def _reject_remote_policy(self, policy: ExecutionPolicy) -> None:
         """Remote paper matches on the server, which does not share this policy."""
@@ -436,7 +463,8 @@ class StrategyRunner:
         latency = build_latency(self.config.latency)
         provider = self._live_provider() if is_live else self._historical_provider()
         engine = LiveSimulationEngine() if is_live else BacktestEngine()
-        broker, execution = self._resolve_broker_and_execution(
+        broker, execution, gateway, owns_broker = self._resolve_broker_and_execution(
+            fee=fee,
             slippage=slippage,
             latency=latency,
         )
@@ -455,21 +483,26 @@ class StrategyRunner:
             database=runtime.database,
             strategy_config=strategy_config,
         )
-        self._load_strategy_state(strategy)
-        result = engine.run(
-            strategy,
-            provider,
-            run_config,
-            simulator=broker,
-            fee=fee,
-            slippage=slippage,
-            latency=latency,
-            execution=execution,
-            execution_policy=policy,
-            quote_fill=self.config.data.quote_fill,
-        )
-        self._save_strategy_state(strategy)
-        return result
+        try:
+            self._load_strategy_state(strategy)
+            result = engine.run(
+                strategy,
+                provider,
+                run_config,
+                simulator=broker,
+                fee=fee,
+                slippage=slippage,
+                latency=latency,
+                execution=execution,
+                execution_policy=policy,
+                quote_fill=self.config.data.quote_fill,
+                gateway=gateway,
+            )
+            self._save_strategy_state(strategy)
+            return result
+        finally:
+            if owns_broker:
+                broker.close()
 
 
 __all__ = [

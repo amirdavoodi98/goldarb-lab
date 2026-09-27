@@ -265,6 +265,65 @@ def test_live_provider_skips_duplicates_and_survives_errors():
     assert len(events) >= 2
 
 
+def test_strategy_context_submits_through_order_gateway_not_submit_buy(tmp_path, monkeypatch):
+    from goldarb.engine import SimulationLoop
+    from goldarb.execution import NoLatency, NoSlippage
+    from goldarb.gateway import LocalPaperOrderGateway
+    from goldarb.simulation.brokers import PaperBroker
+    from goldarb.simulation.models import Quote
+    from goldarb.strategy import Strategy
+
+    submits: list[str] = []
+    buys: list[str] = []
+    real_submit = LocalPaperOrderGateway.submit
+
+    def spy_submit(self, **kwargs):
+        submits.append(kwargs["client_order_id"])
+        return real_submit(self, **kwargs)
+
+    def spy_buy(self, account, **kwargs):
+        del self, account, kwargs
+        buys.append("submit_buy")
+        raise AssertionError("submit_buy is not the Strategy path")
+
+    monkeypatch.setattr(LocalPaperOrderGateway, "submit", spy_submit)
+    monkeypatch.setattr(PaperBroker, "submit_buy", spy_buy)
+
+    class _Buy(Strategy):
+        name = "buy"
+
+        def on_market_data(self, ctx) -> None:
+            if ctx.orders():
+                return
+            ctx.submit_order(
+                symbol="طلا",
+                side="BUY",
+                quantity="1",
+                order_type="MARKET",
+                client_order_id="engine-gateway",
+            )
+
+    broker = LocalSimulator(tmp_path / "gateway.db")
+    account = broker.create_account(initial_cash="100000", fee_rate="0")
+    snapshot = MarketSnapshot(
+        event_id="e1",
+        timestamp=datetime(2026, 8, 29, 12, 0, tzinfo=TEHRAN),
+        quotes=(Quote(symbol="طلا", last=Decimal("100"), ask=Decimal("100")),),
+    )
+    loop = SimulationLoop(
+        broker=broker,
+        account_id=account.id,
+        strategy=_Buy(),
+        slippage=NoSlippage(),
+        latency=NoLatency(),
+    )
+    loop.process(snapshot)
+    assert submits == ["engine-gateway"]
+    assert buys == []
+    assert isinstance(loop.ctx._gateway, LocalPaperOrderGateway)
+    assert loop.ctx.orders()[0].status == OrderStatus.FILLED
+
+
 def test_max_drawdown_from_equity_history(tmp_path):
     result = BacktestEngine().run(
         MaBandStrategy(quantity="10"),

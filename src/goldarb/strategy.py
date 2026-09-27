@@ -1,7 +1,8 @@
 """Environment-agnostic Strategy contract.
 
-A Strategy talks only to ``StrategyContext``. Engines feed market data into a
-``PaperBroker`` (typically ``LocalSimulator``) and then call the strategy.
+A Strategy talks only to ``StrategyContext``. Order submit and cancel go
+through ``OrderGateway``. Engines still feed market data into the paper
+broker and keep ``create_account`` / ``equity_history`` there.
 """
 
 from __future__ import annotations
@@ -18,6 +19,11 @@ from .execution_policy import (
     NoOpExecutionPolicy,
     RawOrder,
     policy_is_noop,
+)
+from .gateway import (
+    OrderGateway,
+    RemoteSimulatorOrderGateway,
+    order_gateway_for,
 )
 from .simulation.models import (
     Fill,
@@ -67,12 +73,14 @@ class StrategyContext:
         config: Mapping[str, Any] | None = None,
         execution_policy: ExecutionPolicy | None = None,
         quote_fill: str = "last",
+        gateway: OrderGateway | None = None,
     ) -> None:
         self._broker = broker
         self.account_id = account_id
         self.config: dict[str, Any] = dict(config or {})
         self._policy: ExecutionPolicy = execution_policy or NoOpExecutionPolicy()
         self._quote_fill = quote_fill
+        self._gateway = gateway
         self._market: MarketSnapshot | None = None
         self._clock: datetime | None = None
         self._portfolio_cache: Portfolio | None = None
@@ -126,6 +134,17 @@ class StrategyContext:
                 return quote
         return None
 
+    def _order_gateway(self) -> OrderGateway:
+        """Gateway injected by ``StrategyRunner``, or a wrap of this paper broker."""
+        if self._gateway is None:
+            self._gateway = order_gateway_for(self._broker, self.account_id)
+        return self._gateway
+
+    def _remote_paper(self) -> bool:
+        return isinstance(self._broker, RemoteSimulator) or isinstance(
+            self._gateway, RemoteSimulatorOrderGateway
+        )
+
     def submit_order(
         self,
         *,
@@ -136,11 +155,10 @@ class StrategyContext:
         limit_price: Decimal | float | str | None = None,
         client_order_id: str | None = None,
     ) -> Order:
-        # NoOp keeps the broker call unchanged, including remote paper.
+        # NoOp keeps the gateway call unchanged, including remote paper.
         # A real policy rewrites type, limit, size, and time_in_force first.
         if policy_is_noop(self._policy):
-            order = self._broker.submit_order(
-                self.account_id,
+            order = self._order_gateway().submit(
                 symbol=symbol,
                 side=side,
                 quantity=quantity,
@@ -149,7 +167,7 @@ class StrategyContext:
                 client_order_id=client_order_id,
             )
         else:
-            if isinstance(self._broker, RemoteSimulator):
+            if self._remote_paper():
                 raise ValueError(REMOTE_POLICY_ERROR)
             paper = self._policy.translate(
                 RawOrder(
@@ -162,8 +180,7 @@ class StrategyContext:
                 quote=self._quote_for(symbol),
                 quote_fill=self._quote_fill,
             )
-            order = self._broker.submit_order(
-                self.account_id,
+            order = self._order_gateway().submit(
                 symbol=symbol,
                 side=side,
                 quantity=paper.quantity,
@@ -186,7 +203,7 @@ class StrategyContext:
         return order
 
     def cancel_order(self, order_id: str) -> Order:
-        order = self._broker.cancel_order(self.account_id, order_id)
+        order = self._order_gateway().cancel(order_id)
         self._portfolio_cache = None
         self.record("cancel", {"order_id": order.id, "status": order.status.value})
         return order

@@ -218,7 +218,7 @@ Hookها:
 - HTTP نزن.
 - فایل آرشیو نخوان.
 - SQLite باز نکن.
-- Broker را مستقیم صدا نزن.
+- Broker را مستقیم صدا نزن. `submit_order` و `cancel_order` فقط از `OrderGateway` داخل `StrategyContext` می‌روند.
 - تصمیم را روی دادهٔ `ctx.market` بگیر، نه روی حدس از زمان سیستم.
 
 پارامترهای قابل تنظیم را در `__init__` بگیر تا از YAML تزریق شوند:
@@ -334,12 +334,27 @@ latency:
 
 | فیلد | معنی |
 | --- | --- |
-| `broker` | `""` (پیش‌فرض)، `agah`، یا `mofid`. فقط preset کاغذی است: `fee_rate` و `allow_short`، به‌اضافهٔ `code` و `display_name` روی خود preset. موتور همچنان از `mode` می‌آید: `LocalPaperBroker` یا `RemoteSimulator`. |
+| `broker` | `""` (پیش‌فرض)، `agah`، یا `mofid`. فقط preset کاغذی است: `fee_rate` و `allow_short`، به‌اضافهٔ `code` و `display_name` روی خود preset. `agah` حمل‌ونقل نیست. موتور و `OrderGateway` از `mode` می‌آیند. |
 | `allow_short` | اگر در فایل باشد، همان مقدار حساب paper است. اگر نباشد و `broker` برابر `agah` یا `mofid` باشد، از preset می‌آید (هر دو `false`). |
 | `state_path` | مسیر JSON پنجرهٔ پریمیوم. `StrategyRunner` قبل از `on_start` آن را لود می‌کند و بعد از اجرا ذخیره می‌کند. |
 | `reset_history` | اگر `true` باشد، `on_start` پنجره را پاک می‌کند. |
 
-`fee` اگر در کانفیگ باشد همان کارمزد است. اگر نباشد و `broker` برابر `agah` یا `mofid` باشد، `fee_rate` از preset است (`0.0005`). `examples/simulate_agah_broker.py` مسیر paper مستقیم با `submit_buy` است، نه مسیر Strategy.
+`fee` اگر در کانفیگ باشد همان کارمزد است. اگر نباشد و `broker` برابر `agah` یا `mofid` باشد، `fee_rate` از preset است (`0.0005`). `get_broker("agah")` در مسیر Strategy فقط همین preset را می‌خواند.
+
+حمل‌ونقل سفارش `OrderGateway` است و فقط `StrategyRunner` آن را از روی `mode` می‌سازد:
+
+| `mode` | درگاه |
+| --- | --- |
+| `backtest`، `offline_backtest`، `live_paper_local` | آداپتور `LocalPaperBroker` |
+| `live_paper_remote` | آداپتور `RemoteSimulator` (`feed()` ریموت `False` می‌ماند) |
+
+`create_account` و `equity_history` روی موتور paper می‌مانند، نه روی درگاه.
+
+`examples/simulate_local.py`، `examples/simulate_remote.py`، و `examples/simulate_agah_broker.py` کاغذ مستقیم هستند، نه مسیر Strategy. سفارش را با `submit_buy` می‌فرستند.
+
+`run_premium_threshold` خارج از قرارداد `Strategy` است. به `StrategyContext` و `OrderGateway` وصل نیست.
+
+نمونهٔ مسیر Strategy، با یک کلاس ثبت‌شده در بک‌تست و `live_paper_local`: `examples/run_strategy_gateway.py`.
 
 سایر فیلدها:
 
@@ -398,6 +413,7 @@ print(result.metrics.n_orders, result.metrics.n_trades, result.portfolio.equity)
 
 - DataProvider
 - Engine (`LocalPaperBroker` یا `RemoteSimulator` از روی `runtime.mode`)
+- `OrderGateway` روی همان موتور؛ Strategy سفارش را از این درگاه می‌فرستد
 - کارمزد و `allow_short` حساب paper؛ اگر `runtime.broker` برابر `agah` یا `mofid` باشد و خودت آن‌ها را ست نکرده باشی، از preset کاغذی
 - Fee / Slippage / Latency
 
@@ -480,7 +496,9 @@ runtime:
   mode: live_paper_local
 ```
 
-`live_paper_remote` سفارش را به شبیه‌ساز سرور می‌فرستد. سفارش واقعی به بازار ارسال نمی‌شود.
+`live_paper_remote` سفارش را از همان `OrderGateway` به شبیه‌ساز سرور می‌فرستد. `feed()` محلی اجرا نمی‌شود. سفارش واقعی به بازار ارسال نمی‌شود.
+
+همان Strategy را بدون ویرایش `on_market_data` بین `backtest` و `live_paper_local` عوض کن. هر دو از آداپتور محلی درگاه رد می‌شوند. اسکریپت `examples/run_strategy_gateway.py` همین کار را می‌کند.
 
 ---
 
@@ -491,6 +509,9 @@ runtime:
 - گذاشتن توکن داخل YAML
 - انتظار اینکه `strategy.name` یک کلاس ثبت‌نشده را بسازد؛ فقط نام‌های `STRATEGY_REGISTRY` ساخته می‌شوند
 - زدن HTTP داخل Strategy
+- عوض کردن `runtime.broker` به `agah` به امید سفارش واقعی؛ آن مقدار فقط preset کاغذی است
+- حساب کردن `examples/simulate_local.py`، `simulate_remote.py`، یا `simulate_agah_broker.py` به‌عنوان مسیر Strategy؛ آن‌ها paper مستقیم‌اند
+- وصل کردن `run_premium_threshold` به Strategy؛ آن موتور خارج از این قرارداد است
 - اجرای کل آرشیو ۱۴روزه با `fill_session: true` برای تست اول
 - فراموش کردن `allow_short: true` برای استراتژی جفت
 - آرشیو بدون `manifest.json` با `offline_backtest`؛ برای JSONL خام `provider: jsonl` بگذار و `symbols` را صریح بنویس

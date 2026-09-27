@@ -198,9 +198,12 @@ Install `.[yaml]` for YAML configuration and `.[parquet]` for partitioned
 Parquet archives. Credentials remain in `GOLDARB_TOKEN` / environment variables,
 not in configuration files.
 
-`examples/simulate_agah_broker.py` is direct paper (`submit_buy` on the
-preset). It is not the Strategy path. Strategy runs take the preset from
-`AppConfig`:
+`examples/simulate_local.py`, `examples/simulate_remote.py`, and
+`examples/simulate_agah_broker.py` are direct paper (`submit_buy`). They are
+not the Strategy path. `examples/run_strategy_gateway.py` runs one registered
+Strategy through `StrategyRunner` in `backtest` and `live_paper_local`; orders
+go through `OrderGateway`. `run_premium_threshold` is outside the Strategy
+contract. Strategy runs take the paper preset from `AppConfig`:
 
 ```yaml
 runtime:

@@ -10,6 +10,7 @@ from .archive import (
 from .client import LabClient
 from .config import AppConfig, AppConfigBuilder
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
+from .gateway import LocalPaperOrderGateway, OrderGateway, RemoteSimulatorOrderGateway
 from .pipelines import iran_session_live, month_backtest, offline_backtest
 from .premium_threshold import PremiumThresholdResult, run_premium_threshold
 from .runtime import STRATEGY_REGISTRY, StrategyRunner, build_strategy
@@ -38,6 +39,8 @@ __all__ = [
     "GOLD_FUND_SYMBOLS",
     "GOLD_FUNDS",
     "LabClient",
+    "LocalPaperOrderGateway",
+    "OrderGateway",
     "GoldArbApiSource",
     "HistoricalDatasetSource",
     "JsonlDatasetStore",
@@ -46,6 +49,7 @@ __all__ = [
     "PairZScoreStrategy",
     "PremiumThresholdResult",
     "PriceMomentumStrategy",
+    "RemoteSimulatorOrderGateway",
     "ParquetDatasetStore",
     "RunConfig",
     "RunResult",

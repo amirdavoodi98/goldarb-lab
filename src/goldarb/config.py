@@ -376,7 +376,8 @@ class AppConfigBuilder:
         """Paper preset code: ``""``, ``agah``, or ``mofid``.
 
         This is not ``StrategyRunner.set_broker``. The runner still builds
-        ``LocalPaperBroker`` or ``RemoteSimulator`` from ``runtime.mode``.
+        ``LocalPaperBroker`` or ``RemoteSimulator`` from ``runtime.mode``
+        and wraps that object in an ``OrderGateway``.
         """
         code = str(broker or "").strip().lower()
         if code not in PAPER_BROKER_CODES:
