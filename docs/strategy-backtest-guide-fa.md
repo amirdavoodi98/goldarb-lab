@@ -230,15 +230,20 @@ strategy:
     quantity: "1"
 ```
 
-سپس:
+سپس، برای کلاس خودت:
 
 ```python
 strategy = MyStrategy(**config.strategy.params)
+result = StrategyRunner.from_config(config).run(strategy)
 ```
 
-`StrategyRunner` کلاس Strategy را از روی `name` نمی‌سازد. خودت باید کلاس را import و instantiate کنی.
+`strategy.name` فقط از `STRATEGY_REGISTRY` کلاس می‌سازد. فهرست فاز ۲:
 
-بعد از نوشتن کلاس، آن را در `src/goldarb/strategies/__init__.py` و در صورت نیاز `src/goldarb/__init__.py` export کن.
+`price_momentum`، `bubble_sign`، `bubble_rank`، `pair_zscore`، `ma_band`.
+
+`StrategyRunner.run()` بدون آرگومان همین نام‌های ثبت‌شده را می‌سازد. نامی که در این فهرست نیست کلاس جدید نمی‌سازد و `ValueError` می‌دهد. کلاس خودت را خودت بساز و به `run(strategy)` بده.
+
+بعد از نوشتن کلاس، آن را در `src/goldarb/strategies/__init__.py` و در صورت نیاز `src/goldarb/__init__.py` export کن. تا وقتی داخل رجیستری ثبت نشده، `strategy.name` آن را نمی‌سازد.
 
 استراتژی‌های آماده:
 
@@ -273,9 +278,11 @@ data:
 
 runtime:
   mode: offline_backtest
+  broker: ""
   initial_cash: "1000000000"
   allow_short: false
   database: ":memory:"
+  state_path: ""
 
 session:
   timezone: Asia/Tehran
@@ -323,12 +330,26 @@ latency:
 | `live_paper_local` | داده زنده + matching در SDK |
 | `live_paper_remote` | داده زنده + matching روی سرور |
 
+کارگزار کاغذی از همین بلوک می‌آید، نه از اسکریپت `submit_buy`.
+
+| فیلد | معنی |
+| --- | --- |
+| `broker` | `""` (پیش‌فرض)، `agah`، یا `mofid`. فقط preset کاغذی است: `fee_rate` و `allow_short`، به‌اضافهٔ `code` و `display_name` روی خود preset. موتور همچنان از `mode` می‌آید: `LocalPaperBroker` یا `RemoteSimulator`. |
+| `allow_short` | اگر در فایل باشد، همان مقدار حساب paper است. اگر نباشد و `broker` برابر `agah` یا `mofid` باشد، از preset می‌آید (هر دو `false`). |
+| `state_path` | مسیر JSON پنجرهٔ پریمیوم. `StrategyRunner` قبل از `on_start` آن را لود می‌کند و بعد از اجرا ذخیره می‌کند. |
+| `reset_history` | اگر `true` باشد، `on_start` پنجره را پاک می‌کند. |
+
+`fee` اگر در کانفیگ باشد همان کارمزد است. اگر نباشد و `broker` برابر `agah` یا `mofid` باشد، `fee_rate` از preset است (`0.0005`). `examples/simulate_agah_broker.py` مسیر paper مستقیم با `submit_buy` است، نه مسیر Strategy.
+
 سایر فیلدها:
 
 - `initial_cash`
-- `allow_short`
 - `database`: `:memory:` یا مسیر SQLite
 - `account_id`: اگر بخواهی حساب موجود را ادامه بدهی
+
+`BubbleRankStrategy` و `PairZScoreStrategy` در state فقط پنجرهٔ پریمیوم (`_premiums`) و در صورت نیاز برچسب جفت را نگه می‌دارند. `on_start` با state لودشده این پنجره را پاک نمی‌کند. `_current_pair` در `on_start` خالی می‌شود، چون پوزیشن مال حساب است. `reset_history()` همچنان پنجره را پاک می‌کند.
+
+`month_backtest` و `iran_session_live` همان `StrategyRunner` را صدا می‌زنند. پیش‌فرض `allow_short` دیگر `true` پنهان نیست؛ برای جفت باید `allow_short=True` را صریح بگذاری.
 
 ### مدل‌های اجرا
 
@@ -376,11 +397,11 @@ print(result.metrics.n_orders, result.metrics.n_trades, result.portfolio.equity)
 `StrategyRunner` بر اساس کانفیگ این‌ها را می‌سازد:
 
 - DataProvider
-- Engine
-- Broker
+- Engine (`LocalPaperBroker` یا `RemoteSimulator` از روی `runtime.mode`)
+- کارمزد و `allow_short` حساب paper؛ اگر `runtime.broker` برابر `agah` یا `mofid` باشد و خودت آن‌ها را ست نکرده باشی، از preset کاغذی
 - Fee / Slippage / Latency
 
-تو فقط Strategy را می‌سازی.
+تو فقط Strategy را می‌سازی. preset کارگزار به‌جای broker موتور تزریق نمی‌شود.
 
 خواندن نتیجه:
 
@@ -468,7 +489,7 @@ runtime:
 - نصب `goldarb-lab[yaml]` از PyPI به‌جای نصب editable از همین ریپو
 - استفاده از Python 3.10؛ پروژه `>=3.11` می‌خواهد
 - گذاشتن توکن داخل YAML
-- انتظار اینکه `strategy.name` کلاس را خودکار بسازد
+- انتظار اینکه `strategy.name` یک کلاس ثبت‌نشده را بسازد؛ فقط نام‌های `STRATEGY_REGISTRY` ساخته می‌شوند
 - زدن HTTP داخل Strategy
 - اجرای کل آرشیو ۱۴روزه با `fill_session: true` برای تست اول
 - فراموش کردن `allow_short: true` برای استراتژی جفت

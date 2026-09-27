@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 
-from goldarb import AppConfig, Strategy, StrategyRunner, build_strategy
+from goldarb import (
+    AppConfig,
+    BubbleRankStrategy,
+    PairZScoreStrategy,
+    Strategy,
+    StrategyRunner,
+    build_strategy,
+)
 from goldarb.archive import (
     ARCHIVE_SCHEMA_VERSION,
     JsonlDatasetStore,
@@ -17,10 +25,12 @@ from goldarb.archive import (
 )
 from goldarb.execution import Broker
 from goldarb.runtime import build_latency, build_slippage
-from goldarb.simulation import RemoteSimulator
+from goldarb.simulation import LocalSimulator, RemoteSimulator
+from goldarb.simulation.brokers import AgahBroker
 from goldarb.simulation.models import MarketSnapshot
 from goldarb.sources import ArchiveDatasetSource, historical_source
 from goldarb.strategies import PriceMomentumStrategy
+from goldarb.strategy import StrategyContext
 
 
 class CountingStrategy(Strategy):
@@ -357,6 +367,138 @@ def test_manifestless_collector_directory_is_a_jsonl_source(tmp_path):
 def test_remote_simulator_satisfies_engine_broker_contract():
     remote = RemoteSimulator(object())  # HTTP is not used for structural check.
     assert isinstance(remote, Broker)
+
+
+def _archive_config(tmp_path, **runtime):
+    write_symbol_bars(
+        tmp_path,
+        {"طلا": _bars(date(2026, 8, 29), (100, 101))},
+        grain="1s",
+        start="2026-08-29",
+        end="2026-08-29",
+    )
+    payload = {
+        "data": {
+            "provider": "archive",
+            "source": str(tmp_path),
+            "symbols": ["طلا"],
+            "grain": "1s",
+            "fill_session": False,
+        },
+        "runtime": {"mode": "offline_backtest", "initial_cash": "10000", **runtime},
+    }
+    return payload
+
+
+def test_paper_broker_preset_fills_unset_terms_only(tmp_path):
+    preset = _archive_config(tmp_path / "preset", broker="agah")
+    config = AppConfig.from_mapping(preset)
+    assert config.runtime.broker == "agah"
+    assert config.runtime.allow_short_set is False
+    assert config.fee_set is False
+    sim = LocalSimulator(tmp_path / "preset.db")
+    result = (
+        StrategyRunner.from_config(config)
+        .set_broker(sim)
+        .set_strategy(CountingStrategy())
+        .run()
+    )
+    account = sim.get_account(result.account_id)
+    assert account.allow_short is False
+    assert account.fee_rate == Decimal("0.0005")
+    assert sim.broker is None
+    assert not isinstance(sim.broker, AgahBroker)
+
+    overridden = AppConfig.from_mapping(
+        {
+            **_archive_config(tmp_path / "override", broker="Mofid", allow_short=True),
+            "fee": {"name": "PercentFee", "params": {"fee_rate": "0.002"}},
+        }
+    )
+    assert overridden.runtime.broker == "mofid"
+    assert overridden.runtime.allow_short_set is True
+    assert overridden.fee_set is True
+    other = LocalSimulator(tmp_path / "override.db")
+    result = (
+        StrategyRunner.from_config(overridden)
+        .set_broker(other)
+        .set_strategy(CountingStrategy())
+        .run()
+    )
+    account = other.get_account(result.account_id)
+    assert account.allow_short is True
+    assert account.fee_rate == Decimal("0.002")
+    assert other.broker is None
+
+    with pytest.raises(ValueError, match="runtime.broker"):
+        AppConfig.builder().set_broker("live-http")
+    assert AppConfig().runtime.broker == ""
+
+
+def test_runner_reloads_premium_window_before_on_start(tmp_path):
+    archive = tmp_path / "bars"
+    write_symbol_bars(
+        archive,
+        {"طلا": _bars(date(2026, 8, 29), (100, 101))},
+        grain="1s",
+        start="2026-08-29",
+        end="2026-08-29",
+    )
+    state_path = tmp_path / "nested" / "window.json"
+    stamp = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+    seeded = BubbleRankStrategy()
+    seeded._premiums["طلا"] = [(stamp, -1.5), (stamp + timedelta(seconds=1), -1.0)]
+    state_path.parent.mkdir()
+    state_path.write_text(json.dumps(seeded.export_state()), encoding="utf-8")
+
+    class Probe(BubbleRankStrategy):
+        def on_start(self, ctx):
+            self.before = len(self._premiums.get("طلا", []))
+            self.pair_before = self._current_pair
+            super().on_start(ctx)
+            self.after = len(self._premiums.get("طلا", []))
+            self.pair_after = self._current_pair
+
+    probe = Probe()
+    probe._current_pair = ("طلا", "زر")
+    config = (
+        AppConfig.builder()
+        .set_archive(archive, symbols=["طلا"], start="2026-08-29", end="2026-08-29")
+        .set_fee("NoFee")
+        .set_state_path(state_path)
+        .build()
+    )
+    StrategyRunner.from_config(config).set_strategy(probe).run()
+    assert probe.before == 2
+    assert probe.after == 2
+    assert probe.pair_before == ("طلا", "زر")
+    assert probe.pair_after is None
+    assert len(probe._premiums["طلا"]) >= 2
+    restored = BubbleRankStrategy()
+    restored.load_state(json.loads(state_path.read_text(encoding="utf-8")))
+    assert len(restored._premiums["طلا"]) >= 2
+
+    ctx = StrategyContext(object(), "acct", config={"reset_history": "true"})
+    restored._current_pair = ("طلا", "زر")
+    restored.on_start(ctx)
+    assert restored._current_pair is None
+    assert restored._premiums == {}
+
+    fresh = PairZScoreStrategy()
+    fresh._spreads = [(stamp, 0.4)]
+    saved = fresh.export_state()
+    assert saved["pair"] == ["طلا", "زر"]
+    loaded = PairZScoreStrategy(fund_a="عیار", fund_b="گوهر")
+    loaded._current_pair = ("عیار", "گوهر")
+    loaded.load_state(saved)
+    loaded.on_start(StrategyContext(object(), "acct"))
+    assert len(loaded._spreads) == 1
+    assert loaded._current_pair is None
+    assert loaded.pair_label == ("طلا", "زر")
+    assert loaded.fund_a == "عیار"
+    loaded.reset_history()
+    assert loaded._spreads == []
+    assert Strategy().export_state() == {}
 
 
 def test_parquet_store_contract_when_extra_is_installed(tmp_path):

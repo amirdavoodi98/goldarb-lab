@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 
 from goldarb import (
+    AppConfig,
     BubbleRankStrategy,
+    StrategyRunner,
     iran_session_live,
     month_backtest,
 )
@@ -133,6 +135,7 @@ def test_month_backtest_pipeline_1s(tmp_path):
         days=30,
         fill_session=False,
         initial_cash="1000000",
+        allow_short=True,
         fee=PercentFee("0"),
         simulator=LocalSimulator(tmp_path / "month.db"),
     )
@@ -199,6 +202,7 @@ def test_live_universe_polls_every_second_with_premium(tmp_path):
         include_session_bars=False,
         grain="1s",
         initial_cash="1000000",
+        allow_short=True,
         fee=PercentFee("0"),
         simulator=LocalSimulator(tmp_path / "live.db"),
         stop_at=start + timedelta(seconds=12),
@@ -310,6 +314,7 @@ def test_chained_live_keeps_month_premium_window(tmp_path):
         days=30,
         fill_session=False,
         initial_cash="1000000",
+        allow_short=True,
         fee=PercentFee("0"),
         simulator=LocalSimulator(tmp_path / "month.db"),
     )
@@ -323,6 +328,7 @@ def test_chained_live_keeps_month_premium_window(tmp_path):
         include_session_bars=False,
         grain="1s",
         initial_cash="1000000",
+        allow_short=True,
         fee=PercentFee("0"),
         simulator=LocalSimulator(tmp_path / "live.db"),
         stop_at=live_clock["now"] + timedelta(seconds=2),
@@ -332,6 +338,89 @@ def test_chained_live_keeps_month_premium_window(tmp_path):
     assert len(strategy._premiums["طلا"]) >= history_len
     assert strategy.last_ranking is not None
     assert strategy.last_ranking["best_pair"]["active"] is True
+
+
+def _order_signature(result):
+    # submitted_at can tie inside one tick; order id is a uuid.
+    return sorted(
+        (order.symbol, order.side, str(order.quantity), order.status)
+        for order in result.orders
+    )
+
+
+def test_month_backtest_matches_strategy_runner_orders(tmp_path):
+    start = datetime(2026, 8, 29, 8, 30, tzinfo=UTC)
+    end = date(2026, 8, 29)
+    tala, zar, others = _pair_series(start)
+
+    class Fund:
+        def candles_many(self, symbols, *, start, end, grain="1s"):
+            del start, end
+            assert grain == "1s"
+            payload = {"طلا": tala, "زر": zar, **others}
+            return {symbol: payload[symbol] for symbol in symbols if symbol in payload}
+
+    class Client:
+        fund = Fund()
+
+    def run(path, *, allow_short: bool):
+        strategy = BubbleRankStrategy(capital_per_side="100000", min_samples=10, min_gap=1.0)
+        return strategy, month_backtest(
+            strategy,
+            Client(),
+            days=30,
+            end=end,
+            fill_session=False,
+            initial_cash="1000000",
+            allow_short=allow_short,
+            fee=PercentFee("0"),
+            simulator=LocalSimulator(path),
+        )
+
+    short_strategy, short_result = run(tmp_path / "pipe-short.db", allow_short=True)
+    flat_strategy, flat_result = run(tmp_path / "pipe-flat.db", allow_short=False)
+    assert any(item["type"] == "enter_pair" for item in short_strategy.events)
+    assert flat_strategy.events == []
+    assert all(position.quantity == 0 for position in flat_result.portfolio.positions)
+
+    first = end - timedelta(days=30)
+    config = (
+        AppConfig.builder()
+        .set_mode("backtest")
+        .set_provider("goldarb_api")
+        .set_symbols(GOLD_FUND_SYMBOLS)
+        .set_grain("1s")
+        .set_period(first.isoformat(), end.isoformat())
+        .set_fill_session(False)
+        .set_session_hours(True)
+        .set_initial_cash("1000000")
+        .set_allow_short(True)
+        .set_fee("PercentFee", fee_rate="0")
+        .build()
+    )
+    runner_strategy = BubbleRankStrategy(
+        capital_per_side="100000", min_samples=10, min_gap=1.0
+    )
+    runner_result = (
+        StrategyRunner.from_config(config, client=Client())
+        .set_broker(LocalSimulator(tmp_path / "runner-short.db"))
+        .set_strategy(runner_strategy)
+        .run()
+    )
+    assert _order_signature(runner_result) == _order_signature(short_result)
+
+    blocked = config.to_builder().set_allow_short(False).build()
+    blocked_strategy = BubbleRankStrategy(
+        capital_per_side="100000", min_samples=10, min_gap=1.0
+    )
+    blocked_result = (
+        StrategyRunner.from_config(blocked, client=Client())
+        .set_broker(LocalSimulator(tmp_path / "runner-flat.db"))
+        .set_strategy(blocked_strategy)
+        .run()
+    )
+    assert blocked_strategy.events == []
+    assert _order_signature(blocked_result) == _order_signature(flat_result)
 
 
 def test_live_provider_default_poll_is_one_second():

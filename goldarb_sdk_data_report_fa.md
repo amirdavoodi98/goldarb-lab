@@ -391,9 +391,16 @@ from goldarb import BubbleRankStrategy, LabClient, iran_session_live, month_back
 
 strategy = BubbleRankStrategy()
 with LabClient.from_env() as client:
-    month = month_backtest(strategy, client, days=30, grain="1s", fill_session=True)
+    month = month_backtest(
+        strategy, client, days=30, grain="1s", fill_session=True, allow_short=True
+    )
     live = iran_session_live(
-        strategy, client, poll_seconds=1.0, lookback_days=0, include_session_bars=False
+        strategy,
+        client,
+        poll_seconds=1.0,
+        lookback_days=0,
+        include_session_bars=False,
+        allow_short=True,
     )
 ```
 

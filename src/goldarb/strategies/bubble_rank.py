@@ -7,6 +7,7 @@ window over those 1s premiums, not a tick count.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -20,7 +21,10 @@ from goldarb.signals.bubble_rank import (
 from goldarb.simulation.models import Side, decimal_value
 from goldarb.strategies.pairs import (
     append_premiums,
+    dump_premium_points,
     flatten_positions,
+    history_reset_requested,
+    load_premium_points,
     open_pair,
     pair_event,
     premiums_on_snapshot,
@@ -49,14 +53,38 @@ class BubbleRankStrategy(Strategy):
         self.min_gap = float(min_gap)
         self._current_pair: tuple[str, str] | None = None
         self._premiums: dict[str, list[tuple[datetime, float]]] = {}
+        self._state_loaded = False
         self.events: list[dict[str, Any]] = []
         self.last_ranking: dict[str, Any] | None = None
 
+    def export_state(self) -> dict[str, Any]:
+        return {
+            "_premiums": {
+                symbol: dump_premium_points(series)
+                for symbol, series in self._premiums.items()
+            }
+        }
+
+    def load_state(self, state: Mapping[str, Any]) -> None:
+        raw = state.get("_premiums", {})
+        if not isinstance(raw, Mapping):
+            raise ValueError("bubble rank _premiums must be an object")
+        self._premiums = {
+            str(symbol): load_premium_points(series) for symbol, series in raw.items()
+        }
+        self._state_loaded = True
+
+    def reset_history(self) -> None:
+        self._premiums.clear()
+        self.events.clear()
+        self._state_loaded = False
+
     def on_start(self, ctx: StrategyContext) -> None:
+        # The open pair belongs to the account. A loaded premium window stays
+        # unless reset_history was requested.
         self._current_pair = None
-        if str(ctx.config.get("reset_history", "")).lower() in {"1", "true", "yes"}:
-            self._premiums.clear()
-            self.events.clear()
+        if history_reset_requested(ctx):
+            self.reset_history()
 
     def on_market_data(self, ctx: StrategyContext) -> None:
         snapshot = ctx.market

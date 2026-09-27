@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime, time
 from decimal import Decimal
@@ -31,6 +32,7 @@ from .execution import (
 )
 from .session import grain_step
 from .simulation import RemoteSimulator
+from .simulation.brokers import get_broker
 from .sources import ArchiveDatasetSource, historical_source, live_source
 from .strategies import (
     BubbleRankStrategy,
@@ -177,6 +179,9 @@ class StrategyRunner:
         self._broker: Broker | None = None
         self._execution: ExecutionDriver | None = None
         self._strategy: Strategy | None = None
+        self._live_sleep: Callable[[float], None] | None = None
+        self._live_now: Callable[[], datetime] | None = None
+        self._live_stop_at: datetime | None = None
 
     @classmethod
     def from_config(
@@ -212,6 +217,19 @@ class StrategyRunner:
         """Use an existing ``LabClient`` (runner will not close it)."""
         self.client = client
         self._owns_client = False
+        return self
+
+    def set_live_clock(
+        self,
+        *,
+        sleep: Callable[[float], None] | None = None,
+        now: Callable[[], datetime] | None = None,
+        stop_at: datetime | None = None,
+    ) -> Self:
+        """Forward clock hooks to ``LiveDataProvider``. Not an ``AppConfig`` field."""
+        self._live_sleep = sleep
+        self._live_now = now
+        self._live_stop_at = stop_at
         return self
 
     def _client(self) -> Any:
@@ -273,7 +291,7 @@ class StrategyRunner:
         today = datetime.now(zone).date()
         stop_parts = time.fromisoformat(session.end)
         open_parts = time.fromisoformat(session.start)
-        stop_at = datetime.combine(today, stop_parts, tzinfo=zone)
+        stop_at = self._live_stop_at or datetime.combine(today, stop_parts, tzinfo=zone)
         return LiveDataProvider(
             feed,
             symbols=data.symbols,
@@ -283,10 +301,56 @@ class StrategyRunner:
             lookback_days=session.lookback_days,
             stop_at=stop_at,
             max_polls=session.max_polls,
+            sleep=self._live_sleep,
+            now=self._live_now,
             session_zone=zone,
             session_open=open_parts,
             session_close=stop_parts,
             quote_fill=data.quote_fill,
+        )
+
+    def _paper_terms(self) -> tuple[bool, ModelConfig]:
+        """Fee model and allow_short for the paper account.
+
+        ``runtime.broker`` of ``agah`` or ``mofid`` fills whichever of those
+        two the config did not set. The preset object is not the engine broker.
+        """
+        runtime = self.config.runtime
+        allow_short = runtime.allow_short
+        fee = self.config.fee
+        code = runtime.broker.strip().lower()
+        if not code:
+            return allow_short, fee
+        preset = get_broker(code)
+        if not runtime.allow_short_set:
+            allow_short = bool(preset.allow_short)
+        if not self.config.fee_set:
+            fee = ModelConfig("PercentFee", {"fee_rate": str(preset.fee_rate)})
+        return allow_short, fee
+
+    def _state_file(self) -> Path | None:
+        raw = self.config.runtime.state_path.strip()
+        if not raw:
+            return None
+        return Path(raw)
+
+    def _load_strategy_state(self, strategy: Strategy) -> None:
+        path = self._state_file()
+        if path is None or not path.is_file():
+            return
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError(f"strategy state must be an object: {path}")
+        strategy.load_state(payload)
+
+    def _save_strategy_state(self, strategy: Strategy) -> None:
+        path = self._state_file()
+        if path is None:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(strategy.export_state(), ensure_ascii=False),
+            encoding="utf-8",
         )
 
     def run(self, strategy: Strategy | None = None) -> RunResult:
@@ -332,8 +396,9 @@ class StrategyRunner:
 
     def _run(self, strategy: Strategy) -> RunResult:
         runtime = self.config.runtime
+        allow_short, fee_config = self._paper_terms()
         is_live = runtime.mode.startswith("live_")
-        fee = build_fee(self.config.fee)
+        fee = build_fee(fee_config)
         slippage = build_slippage(self.config.slippage)
         latency = build_latency(self.config.latency)
         provider = self._live_provider() if is_live else self._historical_provider()
@@ -342,19 +407,23 @@ class StrategyRunner:
             slippage=slippage,
             latency=latency,
         )
+        strategy_config = {
+            str(key): str(value) for key, value in self.config.strategy.params.items()
+        }
+        if runtime.reset_history:
+            strategy_config["reset_history"] = "true"
         run_config = RunConfig(
             strategy_name=self.config.strategy.name or strategy.name,
             strategy_version=self.config.strategy.version or getattr(strategy, "version", "0"),
             initial_cash=runtime.initial_cash,
-            allow_short=runtime.allow_short,
+            allow_short=allow_short,
             label=runtime.label or strategy.name,
             account_id=runtime.account_id,
             database=runtime.database,
-            strategy_config={
-                str(key): str(value) for key, value in self.config.strategy.params.items()
-            },
+            strategy_config=strategy_config,
         )
-        return engine.run(
+        self._load_strategy_state(strategy)
+        result = engine.run(
             strategy,
             provider,
             run_config,
@@ -364,6 +433,8 @@ class StrategyRunner:
             latency=latency,
             execution=execution,
         )
+        self._save_strategy_state(strategy)
+        return result
 
 
 __all__ = [

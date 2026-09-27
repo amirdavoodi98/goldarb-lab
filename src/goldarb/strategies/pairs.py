@@ -23,6 +23,27 @@ from goldarb.strategy import StrategyContext
 ZERO = Decimal(0)
 
 
+def history_reset_requested(ctx: StrategyContext) -> bool:
+    return str(ctx.config.get("reset_history", "")).lower() in {"1", "true", "yes"}
+
+
+def dump_premium_points(
+    series: Sequence[tuple[datetime, float]],
+) -> list[list[Any]]:
+    return [[stamp.isoformat(), value] for stamp, value in series]
+
+
+def load_premium_points(raw: Any) -> list[tuple[datetime, float]]:
+    if not isinstance(raw, list):
+        raise ValueError("premium history must be a list")
+    points: list[tuple[datetime, float]] = []
+    for item in raw:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            raise ValueError("premium point must be [timestamp, value]")
+        points.append((datetime.fromisoformat(str(item[0])), float(item[1])))
+    return points
+
+
 def _order_quantity(value: Decimal) -> Decimal:
     qty = value.quantize(QUANTITY_QUANTUM, rounding=ROUND_DOWN)
     return qty if qty > ZERO else ZERO

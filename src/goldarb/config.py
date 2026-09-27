@@ -19,6 +19,10 @@ RUNTIME_MODES = {
     "live_paper_remote",
 }
 
+# Paper presets only. Empty means fee and allow_short come from this config.
+# ``agah`` / ``mofid`` supply those two fields unless the config set them.
+PAPER_BROKER_CODES = frozenset({"", "agah", "mofid"})
+
 # How bid/ask are shaped before a MarketSnapshot is built.
 # ``last`` clears the book so matching falls back to last (close-fill backtests).
 # ``book`` keeps a real touch and copies last into bid/ask when the book is missing.
@@ -114,12 +118,33 @@ class DataConfig:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
+    """Execution mode and paper-account terms.
+
+    ``broker`` is a paper preset name (``agah``, ``mofid``) or ``""``.
+    It does not select the engine. ``mode`` still chooses
+    ``LocalPaperBroker`` or ``RemoteSimulator``.
+
+    ``allow_short_set`` is true when the mapping or a setter provided
+    ``allow_short``. An unset flag lets an ``agah``/``mofid`` preset fill it.
+    """
+
     mode: str = "backtest"
     initial_cash: str = "1000000000"
     allow_short: bool = False
     database: str | None = None
     account_id: str | None = None
     label: str = ""
+    broker: str = ""
+    state_path: str = ""
+    reset_history: bool = False
+    allow_short_set: bool = False
+
+    def __post_init__(self) -> None:
+        broker = str(self.broker or "").strip().lower()
+        if broker not in PAPER_BROKER_CODES:
+            raise ValueError("runtime.broker must be '', 'agah', or 'mofid'")
+        if broker != self.broker:
+            object.__setattr__(self, "broker", broker)
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any] | None) -> Self:
@@ -127,13 +152,18 @@ class RuntimeConfig:
         mode = str(item.get("mode") or "backtest").strip().lower()
         if mode not in RUNTIME_MODES:
             raise ValueError(f"runtime.mode must be one of: {', '.join(sorted(RUNTIME_MODES))}")
+        allow_short_set = "allow_short" in item
         return cls(
             mode=mode,
             initial_cash=str(item.get("initial_cash", "1000000000")),
-            allow_short=bool(item.get("allow_short", False)),
+            allow_short=bool(item["allow_short"]) if allow_short_set else False,
             database=None if item.get("database") is None else str(item["database"]),
             account_id=None if item.get("account_id") is None else str(item["account_id"]),
             label=str(item.get("label") or ""),
+            broker=str(item.get("broker") or ""),
+            state_path=str(item.get("state_path") or ""),
+            reset_history=bool(item.get("reset_history", False)),
+            allow_short_set=allow_short_set,
         )
 
 
@@ -191,6 +221,8 @@ class AppConfig:
     )
     slippage: ModelConfig = field(default_factory=lambda: ModelConfig("NoSlippage"))
     latency: ModelConfig = field(default_factory=lambda: ModelConfig("NoLatency"))
+    # True when ``fee`` was present in the file or set_fee was called.
+    fee_set: bool = False
 
     @classmethod
     def builder(cls, base: AppConfig | None = None) -> AppConfigBuilder:
@@ -212,6 +244,7 @@ class AppConfig:
             fee=ModelConfig.from_value(item.get("fee"), "PercentFee"),
             slippage=ModelConfig.from_value(item.get("slippage"), "NoSlippage"),
             latency=ModelConfig.from_value(item.get("latency"), "NoLatency"),
+            fee_set="fee" in item,
         )
         config.validate()
         return config
@@ -284,6 +317,7 @@ class AppConfigBuilder:
         self._session = replace(seed.session)
         self._strategy = replace(seed.strategy, params=dict(seed.strategy.params))
         self._fee = ModelConfig(seed.fee.name, dict(seed.fee.params))
+        self._fee_set = bool(seed.fee_set)
         self._slippage = ModelConfig(seed.slippage.name, dict(seed.slippage.params))
         self._latency = ModelConfig(seed.latency.name, dict(seed.latency.params))
 
@@ -302,6 +336,7 @@ class AppConfigBuilder:
         self._session = replace(loaded.session)
         self._strategy = replace(loaded.strategy, params=dict(loaded.strategy.params))
         self._fee = ModelConfig(loaded.fee.name, dict(loaded.fee.params))
+        self._fee_set = bool(loaded.fee_set)
         self._slippage = ModelConfig(loaded.slippage.name, dict(loaded.slippage.params))
         self._latency = ModelConfig(loaded.latency.name, dict(loaded.latency.params))
         return self
@@ -320,7 +355,32 @@ class AppConfigBuilder:
         return self
 
     def set_allow_short(self, allow: bool) -> Self:
-        self._runtime = replace(self._runtime, allow_short=bool(allow))
+        self._runtime = replace(
+            self._runtime,
+            allow_short=bool(allow),
+            allow_short_set=True,
+        )
+        return self
+
+    def set_broker(self, broker: str) -> Self:
+        """Paper preset code: ``""``, ``agah``, or ``mofid``.
+
+        This is not ``StrategyRunner.set_broker``. The runner still builds
+        ``LocalPaperBroker`` or ``RemoteSimulator`` from ``runtime.mode``.
+        """
+        code = str(broker or "").strip().lower()
+        if code not in PAPER_BROKER_CODES:
+            raise ValueError("runtime.broker must be '', 'agah', or 'mofid'")
+        self._runtime = replace(self._runtime, broker=code)
+        return self
+
+    def set_state_path(self, path: str | Path | None) -> Self:
+        value = "" if path is None else str(path)
+        self._runtime = replace(self._runtime, state_path=value)
+        return self
+
+    def set_reset_history(self, reset: bool) -> Self:
+        self._runtime = replace(self._runtime, reset_history=bool(reset))
         return self
 
     def set_database(self, database: str | Path | None) -> Self:
@@ -348,6 +408,9 @@ class AppConfigBuilder:
         database: str | Path | None = ...,  # type: ignore[assignment]
         account_id: str | None = ...,  # type: ignore[assignment]
         label: str | None = None,
+        broker: str | None = None,
+        state_path: str | Path | None = None,
+        reset_history: bool | None = None,
     ) -> Self:
         if mode is not None:
             self.set_mode(mode)
@@ -361,6 +424,12 @@ class AppConfigBuilder:
             self.set_account_id(account_id)  # type: ignore[arg-type]
         if label is not None:
             self.set_label(label)
+        if broker is not None:
+            self.set_broker(broker)
+        if state_path is not None:
+            self.set_state_path(state_path)
+        if reset_history is not None:
+            self.set_reset_history(reset_history)
         return self
 
     # --- data ---------------------------------------------------------
@@ -578,6 +647,7 @@ class AppConfigBuilder:
 
     def set_fee(self, name: str = "PercentFee", **params: Any) -> Self:
         self._fee = ModelConfig(str(name), dict(params))
+        self._fee_set = True
         return self
 
     def set_slippage(self, name: str = "NoSlippage", **params: Any) -> Self:
@@ -599,6 +669,7 @@ class AppConfigBuilder:
             fee=ModelConfig(self._fee.name, dict(self._fee.params)),
             slippage=ModelConfig(self._slippage.name, dict(self._slippage.params)),
             latency=ModelConfig(self._latency.name, dict(self._latency.params)),
+            fee_set=self._fee_set,
         )
         config.validate()
         return config
@@ -609,6 +680,7 @@ __all__ = [
     "AppConfigBuilder",
     "DataConfig",
     "ModelConfig",
+    "PAPER_BROKER_CODES",
     "QUOTE_FILL_MODES",
     "RUNTIME_MODES",
     "RuntimeConfig",

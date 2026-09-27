@@ -209,6 +209,14 @@ class Strategy:
             setattr(self, key, value)
         return self
 
+    def export_state(self) -> dict[str, Any]:
+        """Signal memory for another process. Default is empty."""
+        return {}
+
+    def load_state(self, state: Mapping[str, Any]) -> None:
+        """Restore memory from ``export_state``. Default ignores the payload."""
+        del state
+
     def on_start(self, ctx: StrategyContext) -> None:
         return None
 
