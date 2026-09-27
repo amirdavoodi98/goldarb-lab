@@ -119,6 +119,10 @@ class RunResult:
     config: RunConfig
     signals: list[Any] = field(default_factory=list)
     log: list[Any] = field(default_factory=list)
+    # Class name of the OrderGateway ``runtime.mode`` selected.
+    gateway: str = ""
+    # One dict per OrderGateway.submit, captured at submit time.
+    trace: list[dict[str, str]] = field(default_factory=list)
 
 
 def compute_metrics(
@@ -205,6 +209,7 @@ class SimulationLoop:
 
     def process(self, snapshot: MarketSnapshot) -> None:
         self.ctx.set_market(snapshot)
+        self._note_market(snapshot)
         self.ctx.record(
             "market",
             {
@@ -228,7 +233,26 @@ class SimulationLoop:
         if self.on_event is not None:
             self.on_event("stop", self.ctx)
 
+    def _note_market(self, snapshot: MarketSnapshot) -> None:
+        """Optional hook for a recording gateway. Paper gateways do not use it."""
+        gateway = self.gateway
+        if gateway is None:
+            return
+        note = getattr(gateway, "note_market", None)
+        if note is not None:
+            note(snapshot)
+
+    def _release_recorded_fills(self) -> None:
+        """Apply fills queued by a recording gateway. Paper gateways have none."""
+        gateway = self.gateway
+        if gateway is None:
+            return
+        release = getattr(gateway, "release_fills", None)
+        if release is not None:
+            release()
+
     def _notify_new_fills(self) -> None:
+        self._release_recorded_fills()
         for fill in self.broker.list_fills(self.account_id):
             if fill.id in self._seen_fill_ids:
                 continue
@@ -333,6 +357,7 @@ class SimulationEngine:
                 n_signals=len(loop.ctx.signals),
                 initial_cash=account.initial_cash,
             )
+            selected = gateway if gateway is not None else loop.ctx.order_gateway
             return RunResult(
                 account_id=account_id,
                 portfolio=portfolio,
@@ -343,6 +368,12 @@ class SimulationEngine:
                 config=recorded,
                 signals=list(loop.ctx.signals),
                 log=list(loop.ctx.log),
+                gateway="" if selected is None else type(selected).__name__,
+                trace=[
+                    dict(event.payload)
+                    for event in loop.ctx.log
+                    if event.kind == "order"
+                ],
             )
         finally:
             if own:

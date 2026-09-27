@@ -11,7 +11,7 @@ from typing import Any, Callable, Mapping, Self
 from zoneinfo import ZoneInfo
 
 from .client import LabClient
-from .config import AppConfig, AppConfigBuilder, ModelConfig, StrategyConfig
+from .config import LIVE_PAPER_MODES, AppConfig, AppConfigBuilder, ModelConfig, StrategyConfig
 from .data import HistoricalDataProvider, LiveDataProvider
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
 from .execution import (
@@ -37,7 +37,12 @@ from .execution_policy import (
     OffsetLimitPolicy,
     policy_is_noop,
 )
-from .gateway import OrderGateway, order_gateway_for
+from .gateway import (
+    OrderGateway,
+    RecordingOrderGateway,
+    TransportNotConfigured,
+    order_gateway_for,
+)
 from .session import grain_step
 from .simulation import RemoteSimulator
 from .simulation.brokers import get_broker
@@ -202,6 +207,7 @@ class StrategyRunner:
         self.client = client
         self._owns_client = False
         self._broker: Broker | None = None
+        self._order_gateway: OrderGateway | None = None
         self._execution: ExecutionDriver | None = None
         self._strategy: Strategy | None = None
         self._live_sleep: Callable[[float], None] | None = None
@@ -227,6 +233,27 @@ class StrategyRunner:
         """Inject a paper/remote broker; ``None`` restores mode defaults."""
         self._broker = broker
         return self
+
+    def set_order_gateway(self, gateway: OrderGateway | None) -> Self:
+        """Register the ``live_broker`` OrderGateway.
+
+        Paper modes ignore this object. ``runtime.broker`` does not register
+        one. ``None`` leaves ``live_broker`` with no transport.
+        """
+        self._order_gateway = gateway
+        return self
+
+    def use_recording_gateway(self) -> Self:
+        """Build a ``RecordingOrderGateway`` for ``live_broker``.
+
+        The gateway records submit and cancel. It does not open a connection.
+        """
+        self._order_gateway = RecordingOrderGateway()
+        return self
+
+    @property
+    def order_gateway(self) -> OrderGateway | None:
+        return self._order_gateway
 
     def set_execution(self, execution: ExecutionDriver | None) -> Self:
         """Override market-ingress driver (LocalFeed vs ServerSide)."""
@@ -407,11 +434,16 @@ class StrategyRunner:
         ``runtime.broker`` is not transport. ``runtime.mode`` is:
         ``backtest``, ``offline_backtest``, and ``live_paper_local`` use
         ``LocalPaperOrderGateway``; ``live_paper_remote`` uses
-        ``RemoteSimulatorOrderGateway``. An injected ``set_broker`` object
-        keeps its own type. The bool is true when this method opened the
-        local database and must close it.
+        ``RemoteSimulatorOrderGateway``. ``live_broker`` uses the registered
+        ``OrderGateway``, or ``RecordingOrderGateway`` when
+        ``runtime.gateway`` is ``recording``. It does not build a paper
+        matcher. An injected
+        ``set_broker`` object keeps its own type on paper modes. The bool
+        is true when this method opened the local database and must close it.
         """
         runtime = self.config.runtime
+        if runtime.mode == "live_broker":
+            return self._resolve_live_broker()
         if self._broker is not None:
             execution = self._execution
             if execution is None:
@@ -444,6 +476,31 @@ class StrategyRunner:
         )
         return local, self._execution or LocalFeedExecution(), order_gateway_for(local), True
 
+    def _resolve_live_broker(
+        self,
+    ) -> tuple[Broker, ExecutionDriver, OrderGateway, bool]:
+        """Build the live_broker gateway. No brokerage client.
+
+        ``runtime.broker`` of ``agah`` or ``mofid`` is not a transport.
+        ``runtime.gateway=recording`` selects ``RecordingOrderGateway``.
+        A gateway registered in code wins. With neither, this raises
+        ``TransportNotConfigured``. The recorder does not send orders.
+        Its ledger is the account book; matching stays off.
+        """
+        gateway = self._order_gateway
+        if gateway is None and self.config.runtime.gateway == "recording":
+            gateway = RecordingOrderGateway()
+            self._order_gateway = gateway
+        if gateway is None:
+            raise TransportNotConfigured("transport not configured")
+        ledger = getattr(gateway, "ledger", None)
+        if ledger is None or not hasattr(ledger, "create_account"):
+            raise TypeError(
+                "live_broker OrderGateway must expose a ledger; "
+                "this phase does not include a brokerage client"
+            )
+        return ledger, ServerSideExecution(), gateway, False
+
     def _reject_remote_policy(self, policy: ExecutionPolicy) -> None:
         """Remote paper matches on the server, which does not share this policy."""
         remote = self.config.runtime.mode == "live_paper_remote" or isinstance(
@@ -457,7 +514,7 @@ class StrategyRunner:
         policy = build_execution_policy(self.config.execution_policy)
         self._reject_remote_policy(policy)
         allow_short, fee_config = self._paper_terms()
-        is_live = runtime.mode.startswith("live_")
+        is_live = runtime.mode in LIVE_PAPER_MODES
         fee = build_fee(fee_config)
         slippage = build_slippage(self.config.slippage)
         latency = build_latency(self.config.latency)

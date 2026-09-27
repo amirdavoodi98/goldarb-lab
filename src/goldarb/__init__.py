@@ -10,7 +10,13 @@ from .archive import (
 from .client import LabClient
 from .config import AppConfig, AppConfigBuilder
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
-from .gateway import LocalPaperOrderGateway, OrderGateway, RemoteSimulatorOrderGateway
+from .gateway import (
+    LocalPaperOrderGateway,
+    OrderGateway,
+    RecordingOrderGateway,
+    RemoteSimulatorOrderGateway,
+    TransportNotConfigured,
+)
 from .pipelines import iran_session_live, month_backtest, offline_backtest
 from .premium_threshold import PremiumThresholdResult, run_premium_threshold
 from .runtime import STRATEGY_REGISTRY, StrategyRunner, build_strategy
@@ -41,6 +47,7 @@ __all__ = [
     "LabClient",
     "LocalPaperOrderGateway",
     "OrderGateway",
+    "RecordingOrderGateway",
     "GoldArbApiSource",
     "HistoricalDatasetSource",
     "JsonlDatasetStore",
@@ -49,8 +56,9 @@ __all__ = [
     "PairZScoreStrategy",
     "PremiumThresholdResult",
     "PriceMomentumStrategy",
-    "RemoteSimulatorOrderGateway",
     "ParquetDatasetStore",
+    "RemoteSimulatorOrderGateway",
+    "TransportNotConfigured",
     "RunConfig",
     "RunResult",
     "STRATEGY_REGISTRY",
