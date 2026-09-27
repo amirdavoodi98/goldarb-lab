@@ -111,6 +111,7 @@ class Account:
     fees_paid: Decimal
     created_at: str
     updated_at: str
+    broker: str = ""
 
     def __post_init__(self) -> None:
         if self.initial_cash <= 0:
@@ -135,6 +136,7 @@ class Order:
     status: OrderStatus
     submitted_at: str
     updated_at: str
+    broker: str = ""
     time_in_force: TimeInForce = TimeInForce.DAY
     rejection_code: str | None = None
     avg_fill_price: Decimal | None = None

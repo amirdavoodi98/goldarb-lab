@@ -21,7 +21,7 @@ from .models import (
     decimal_value,
 )
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     cash TEXT NOT NULL,
     fee_rate TEXT NOT NULL,
     allow_short INTEGER NOT NULL,
+    broker_code TEXT NOT NULL DEFAULT '',
     fees_paid TEXT NOT NULL,
     last_market_at TEXT,
     created_at TEXT NOT NULL,
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS orders (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     client_order_id TEXT NOT NULL,
+    broker_code TEXT NOT NULL DEFAULT '',
     symbol TEXT NOT NULL,
     side TEXT NOT NULL,
     order_type TEXT NOT NULL,
@@ -152,6 +154,9 @@ class SQLitePersistence:
             return
         if version == 1:
             self._migrate_v1_to_v2()
+            version = 2
+        if version == 2:
+            self._migrate_v2_to_v3()
             return
         raise RuntimeError(
             f"Unsupported simulation schema {version}; expected {SCHEMA_VERSION}"
@@ -197,7 +202,23 @@ class SQLitePersistence:
                 ON order_events(order_id, timestamp, id);
             """
         )
+        self.connection.execute("UPDATE schema_meta SET version=?", (2,))
+
+    def _migrate_v2_to_v3(self) -> None:
+        """Persist broker_code on accounts and orders created before schema 3."""
+        self._add_column("accounts", "broker_code")
+        self._add_column("orders", "broker_code")
         self.connection.execute("UPDATE schema_meta SET version=?", (SCHEMA_VERSION,))
+
+    def _add_column(self, table: str, column: str) -> None:
+        present = {
+            row[1] for row in self.connection.execute(f"PRAGMA table_info({table})")
+        }
+        if column in present:
+            return
+        self.connection.execute(
+            f"ALTER TABLE {table} ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
+        )
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -236,6 +257,7 @@ def account_from_row(row: Any) -> Account:
         fees_paid=decimal_value(row["fees_paid"]),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
+        broker=str(row["broker_code"] or ""),
     )
 
 
@@ -257,6 +279,7 @@ def order_from_row(row: Any) -> Order:
         status=status,
         submitted_at=row["submitted_at"],
         updated_at=row["updated_at"],
+        broker=str(row["broker_code"] or ""),
         time_in_force=TimeInForce(row["time_in_force"] or "DAY"),
         rejection_code=row["rejection_code"],
         avg_fill_price=(
@@ -312,11 +335,11 @@ def upsert_order(db: sqlite3.Connection, order: Order) -> None:
     db.execute(
         """
         INSERT INTO orders(
-            id, account_id, client_order_id, symbol, side, order_type,
+            id, account_id, client_order_id, broker_code, symbol, side, order_type,
             quantity, filled_quantity, limit_price, status, rejection_code,
             time_in_force, avg_fill_price, submitted_at, created_at, accepted_at,
             closed_at, active_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             filled_quantity=excluded.filled_quantity,
             status=excluded.status,
@@ -331,6 +354,7 @@ def upsert_order(db: sqlite3.Connection, order: Order) -> None:
             order.id,
             order.account_id,
             order.client_order_id,
+            order.broker,
             order.symbol,
             order.side.value,
             order.order_type.value,

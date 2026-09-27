@@ -22,7 +22,7 @@ from goldarb import (
 )
 from goldarb.execution import PercentFee
 from goldarb.session import TEHRAN, is_iran_trading_day, session_bounds
-from goldarb.simulation import LocalSimulator
+from goldarb.simulation import LocalSimulator, get_broker
 from goldarb.universe import GOLD_FUND_SYMBOLS
 
 HERE = Path(__file__).resolve().parent
@@ -89,7 +89,7 @@ def main() -> int:
     if DB_PATH.exists():
         DB_PATH.unlink()
     strategy = _strategy()
-    with _client() as client, LocalSimulator(DB_PATH) as simulator:
+    with _client() as client, LocalSimulator(DB_PATH, broker=get_broker("agah")) as simulator:
         result = iran_session_live(
             strategy,
             client,

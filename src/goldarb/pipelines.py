@@ -8,16 +8,80 @@ from pathlib import Path
 from typing import Any
 
 from .archive import dataset_store
-from .data import HistoricalDataProvider, LabLiveFeed, LiveDataProvider
-from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
-from .execution import FeeModel, PercentFee
-from .session import TEHRAN, grain_step, session_bounds
+from .config import AppConfig
+from .engine import RunResult
+from .execution import FeeModel
+from .runtime import StrategyRunner
+from .session import TEHRAN, session_bounds
 from .simulation.local import LocalSimulator
 from .sources import ArchiveDatasetSource
 from .strategy import Strategy
 from .universe import GOLD_FUND_SYMBOLS
 
 BAR_GRAIN_1S = "1s"
+
+
+def _config(
+    *,
+    mode: str,
+    provider: str,
+    symbols: Sequence[str],
+    grain: str,
+    fill_session: bool,
+    initial_cash: str,
+    allow_short: bool,
+    label: str,
+    source: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    fee: FeeModel | None = None,
+    poll_seconds: float | None = None,
+    lookback_days: int | None = None,
+    include_session_bars: bool | None = None,
+) -> AppConfig:
+    builder = (
+        AppConfig.builder()
+        .set_mode(mode)
+        .set_provider(provider)
+        .set_symbols(tuple(symbols))
+        .set_grain(grain)
+        .set_fill_session(fill_session)
+        .set_session_hours(True)
+        .set_initial_cash(initial_cash)
+        .set_allow_short(allow_short)
+        .set_label(label)
+    )
+    if source is not None:
+        builder.set_source(source)
+    if start is not None or end is not None:
+        builder.set_period(start, end)
+    if fee is not None:
+        builder.set_fee(fee.name, **dict(fee.config()))
+    if poll_seconds is not None:
+        builder.set_poll_seconds(poll_seconds)
+    if lookback_days is not None:
+        builder.set_lookback_days(lookback_days)
+    if include_session_bars is not None:
+        builder.set_include_session_bars(include_session_bars)
+    return builder.build()
+
+
+def _run(
+    strategy: Strategy,
+    config: AppConfig,
+    *,
+    client: Any | None = None,
+    simulator: LocalSimulator | None = None,
+    sleep: Any = None,
+    now: Any = None,
+    stop_at: datetime | None = None,
+) -> RunResult:
+    runner = StrategyRunner.from_config(config, client=client).set_strategy(strategy)
+    if stop_at is not None or sleep is not None or now is not None:
+        runner.set_live_clock(sleep=sleep, now=now, stop_at=stop_at)
+    if simulator is not None:
+        runner.set_broker(simulator)
+    return runner.run()
 
 
 def month_backtest(
@@ -29,7 +93,7 @@ def month_backtest(
     symbols: Sequence[str] | None = None,
     fill_session: bool = True,
     initial_cash: str = "1000000000",
-    allow_short: bool = True,
+    allow_short: bool = False,
     fee: FeeModel | None = None,
     simulator: LocalSimulator | None = None,
     end: date | None = None,
@@ -38,36 +102,27 @@ def month_backtest(
 
     ``fill_session=True`` emits every second from 12:00–18:00 on each
     Saturday–Wednesday that has data so the strategy truly runs at 1s.
+
+    ``allow_short`` defaults to false, the same as ``AppConfig``. Pair
+    strategies that need a short leg must pass ``allow_short=True``.
     """
     universe = tuple(symbols) if symbols is not None else GOLD_FUND_SYMBOLS
     last = end or datetime.now(TEHRAN).date()
     first = last - timedelta(days=max(1, int(days)))
-    fund = getattr(client, "fund", client)
-    raw = fund.candles_many(universe, start=first, end=last, grain=grain)
-    if not isinstance(raw, dict):
-        raw = {}
-    provider = HistoricalDataProvider.from_symbol_bars(
-        raw,
-        ffill=True,
-        step=grain_step(grain),
-        session_hours=True,
+    config = _config(
+        mode="backtest",
+        provider="goldarb_api",
+        symbols=universe,
+        grain=grain,
         fill_session=fill_session,
-        event_prefix=f"{grain}-month",
-        lazy=True,
+        initial_cash=initial_cash,
+        allow_short=allow_short,
+        label=f"{strategy.name}-{grain}-{days}d",
+        start=first.isoformat(),
+        end=last.isoformat(),
+        fee=fee,
     )
-    return BacktestEngine().run(
-        strategy,
-        provider,
-        RunConfig(
-            strategy_name=strategy.name,
-            strategy_version=getattr(strategy, "version", "0"),
-            initial_cash=initial_cash,
-            allow_short=allow_short,
-            label=f"{strategy.name}-{grain}-{days}d",
-        ),
-        simulator=simulator,
-        fee=fee or PercentFee("0.0005"),
-    )
+    return _run(strategy, config, client=client, simulator=simulator)
 
 
 def iran_session_live(
@@ -80,7 +135,7 @@ def iran_session_live(
     symbols: Sequence[str] | None = None,
     grain: str = BAR_GRAIN_1S,
     initial_cash: str = "1000000000",
-    allow_short: bool = True,
+    allow_short: bool = False,
     fee: FeeModel | None = None,
     simulator: LocalSimulator | None = None,
     stop_at: datetime | None = None,
@@ -93,32 +148,34 @@ def iran_session_live(
     are warm before live ticks. After ``month_backtest`` on the same strategy
     instance, pass ``lookback_days=0`` and ``include_session_bars=False`` so
     history is not replayed (``on_start`` does not clear it).
+
+    ``allow_short`` defaults to false. Pair strategies must pass
+    ``allow_short=True``.
     """
     universe = tuple(symbols) if symbols is not None else GOLD_FUND_SYMBOLS
     _open, close = session_bounds()
-    provider = LiveDataProvider(
-        LabLiveFeed(client),
+    config = _config(
+        mode="live_paper_local",
+        provider="goldarb_api",
         symbols=universe,
+        grain=grain,
+        fill_session=False,
+        initial_cash=initial_cash,
+        allow_short=allow_short,
+        label=f"{strategy.name}-iran-live-{grain}",
+        fee=fee,
         poll_seconds=poll_seconds,
-        bar_grain=grain,
-        include_session_bars=include_session_bars,
         lookback_days=lookback_days,
-        stop_at=stop_at or close,
+        include_session_bars=include_session_bars,
+    )
+    return _run(
+        strategy,
+        config,
+        client=client,
+        simulator=simulator,
         sleep=sleep,
         now=now,
-    )
-    return LiveSimulationEngine().run(
-        strategy,
-        provider,
-        RunConfig(
-            strategy_name=strategy.name,
-            strategy_version=getattr(strategy, "version", "0"),
-            initial_cash=initial_cash,
-            allow_short=allow_short,
-            label=f"{strategy.name}-iran-live-{grain}",
-        ),
-        simulator=simulator,
-        fee=fee or PercentFee("0.0005"),
+        stop_at=stop_at or close,
     )
 
 
@@ -138,22 +195,16 @@ def offline_backtest(
     manifest = source.store.read_manifest()
     grain_key = str(manifest.get("grain") or grain)
     symbols = tuple(str(item) for item in manifest.get("symbols", ()))
-    provider = source.provider(
-        symbols,
+    config = _config(
+        mode="offline_backtest",
+        provider="archive",
+        symbols=symbols,
         grain=grain_key,
         fill_session=fill_session,
-        session_hours=True,
+        initial_cash=initial_cash,
+        allow_short=allow_short,
+        label=f"{strategy.name}-{grain_key}-offline",
+        source=str(archive),
+        fee=fee,
     )
-    return BacktestEngine().run(
-        strategy,
-        provider,
-        RunConfig(
-            strategy_name=strategy.name,
-            strategy_version=getattr(strategy, "version", "0"),
-            initial_cash=initial_cash,
-            allow_short=allow_short,
-            label=f"{strategy.name}-{grain_key}-offline",
-        ),
-        simulator=simulator,
-        fee=fee or PercentFee("0.0005"),
-    )
+    return _run(strategy, config, simulator=simulator)

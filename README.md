@@ -59,6 +59,7 @@ export GOLDARB_TOKEN=your_token_here
 
 ```python
 from goldarb import LabClient
+from goldarb.simulation import get_broker
 
 with LabClient.from_env() as client:
     bars = client.fund.candles("طلا", start="2026-07-01", end="2026-07-03", grain="1m")
@@ -68,17 +69,22 @@ with LabClient.from_env() as client:
     xau = client.market.xau(start="2026-07-01", end="2026-07-03", grain="1m")
     ime = client.market.ime_cdc_stats("GoldBar", days=180)
 
+    broker = get_broker("mofid")
+    client.simulation.bind(broker)
     account = client.simulation.create_account(
         initial_cash="1000000000",
-        allow_short=True,
+        label="remote strategy",
     )
-    order = client.simulation.submit_order(
-        account.id,
+    order = broker.submit_buy(
+        account,
         symbol="طلا",
-        side="BUY",
         quantity="100",
     )
+    print(broker.get_cash(account))
 ```
+
+That `get_broker(...).submit_buy` call is direct paper. A Strategy run reads
+the paper preset from `AppConfig` (`runtime.broker`).
 
 ## Paper simulation
 
@@ -125,9 +131,16 @@ from goldarb import BubbleRankStrategy, LabClient, iran_session_live, month_back
 
 strategy = BubbleRankStrategy()
 with LabClient.from_env() as client:
-    month = month_backtest(strategy, client, days=30, grain="1s", fill_session=True)
+    month = month_backtest(
+        strategy, client, days=30, grain="1s", fill_session=True, allow_short=True
+    )
     live = iran_session_live(
-        strategy, client, poll_seconds=1.0, lookback_days=0, include_session_bars=False
+        strategy,
+        client,
+        poll_seconds=1.0,
+        lookback_days=0,
+        include_session_bars=False,
+        allow_short=True,
     )
 ```
 
@@ -163,8 +176,15 @@ Full Persian simulator guide: [`docs/local-simulator-fa.md`](docs/local-simulato
 
 ## Configuration-driven runtime
 
-The data source, runtime mode, broker behavior, fee, slippage, latency, and
-session window can be selected without changing Strategy code:
+The data source, runtime mode, paper-broker preset, fee, slippage, latency, and
+session window come from `AppConfig` without changing Strategy code.
+`runtime.broker` is `""`, `agah`, or `mofid`. `agah` and `mofid` are paper
+presets (`code`, `display_name`, `fee_rate`, `allow_short`). They fill
+`fee_rate` and `allow_short` only when the config did not set them. The engine
+is still local paper or `RemoteSimulator` from `runtime.mode`. `strategy.name`
+builds a class only when it is in `STRATEGY_REGISTRY`
+(`price_momentum`, `bubble_sign`, `bubble_rank`, `pair_zscore`, `ma_band`).
+An unknown name does not construct a class.
 
 ```python
 from goldarb import AppConfig, BubbleSignStrategy, StrategyRunner
@@ -178,17 +198,32 @@ Install `.[yaml]` for YAML configuration and `.[parquet]` for partitioned
 Parquet archives. Credentials remain in `GOLDARB_TOKEN` / environment variables,
 not in configuration files.
 
+`examples/simulate_local.py`, `examples/simulate_remote.py`, and
+`examples/simulate_agah_broker.py` are direct paper (`submit_buy`). They are
+not the Strategy path. `examples/run_strategy_gateway.py` runs one registered
+Strategy through `StrategyRunner` in `backtest` and `live_paper_local`; orders
+go through `OrderGateway`. `run_premium_threshold` is outside the Strategy
+contract. Strategy runs take the paper preset from `AppConfig`:
+
+```yaml
+runtime:
+  mode: live_paper_local
+  broker: agah
+```
+
+Direct paper, not `StrategyRunner`:
+
 ```python
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from goldarb.simulation import LocalSimulator, MarketSnapshot, Quote
+from goldarb.simulation import LocalSimulator, MarketSnapshot, Quote, get_broker
 
-with LocalSimulator("paper.sqlite3") as simulator:
+broker = get_broker("agah")
+with LocalSimulator("paper.sqlite3", broker=broker) as simulator:
     account = simulator.create_account(
         initial_cash="1000000000",
-        fee_rate="0.0005",
-        allow_short=True,
+        label="offline strategy",
     )
     simulator.feed(
         MarketSnapshot(
@@ -205,14 +240,16 @@ with LocalSimulator("paper.sqlite3") as simulator:
             ),
         )
     )
-    simulator.submit_order(
-        account.id,
-        symbol="طلا",
-        side="BUY",
-        quantity="100",
-    )
+    broker.submit_buy(account, symbol="طلا", quantity="100")
+    print(broker.list_holdings(account))
+    print(broker.get_cash(account))
     print(simulator.portfolio(account.id))
 ```
+
+V1 still paper-matches on the existing engine. Agah (`agah`) and Mofid (`mofid`)
+both use `fee_rate="0.0005"` and `allow_short=False`. Pass an explicit
+`fee_rate` to `create_account` when that account should differ. Accounts and
+orders persist `broker_code`.
 
 Full Persian guide: [`docs/local-simulator-fa.md`](docs/local-simulator-fa.md)
 
@@ -444,12 +481,14 @@ python examples/backtest_ma_band.py
 python examples/backtest_two_weeks_1s.py
 python examples/backtest_month_1s.py
 python examples/simulate_iran_session_1s.py
+python examples/simulate_agah_broker.py
 python examples/backtest_bubble_rank.py
 python examples/backtest_pair_zscore.py
 python examples/fetch_tala_1s.py
 python examples/fetch_tala_1m.py
 python examples/fetch_xau.py
 python examples/fetch_usdt.py
+python examples/run_strategy_path.py
 ```
 
 ## Run tests
