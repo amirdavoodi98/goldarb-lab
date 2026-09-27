@@ -239,3 +239,55 @@ def test_same_config_backtest_still_uses_local_paper(tmp_path, monkeypatch):
     assert gateway.submits == []
     assert any(order.status == OrderStatus.FILLED for order in result.orders)
     assert strategy._current_pair == ("طلا", "زر")
+    assert result.gateway == "LocalPaperOrderGateway"
+    assert {step["gateway"] for step in result.trace} == {"LocalPaperOrderGateway"}
+
+
+def test_runtime_gateway_is_not_a_broker_name():
+    with pytest.raises(ValueError, match="runtime.gateway"):
+        AppConfig.builder().set_gateway("agah")
+
+
+def test_config_selects_gateway_and_result_trace(tmp_path, monkeypatch):
+    """Mode picks the gateway. The result names it. No submit monkeypatch."""
+    _block_network(monkeypatch)
+    directory = tmp_path / "bars"
+    _gap_archive(directory)
+    backtest = (
+        _config(directory, "backtest")
+        .to_builder()
+        .set_broker("agah")
+        .set_gateway("recording")
+        .set_quote_fill("last")
+        .set_execution_policy("NoOp")
+        .build()
+    )
+    paper = StrategyRunner.from_config(backtest).run()
+    assert paper.gateway == "LocalPaperOrderGateway"
+    assert paper.trace
+    assert {step["gateway"] for step in paper.trace} == {"LocalPaperOrderGateway"}
+    assert {step["order_type"] for step in paper.trace} == {"MARKET"}
+    assert {step["status"] for step in paper.trace} == {"FILLED"}
+
+    offset = (
+        backtest.to_builder()
+        .set_execution_policy(
+            "OffsetLimit",
+            quantity_quantum="1",
+            price_tick="1",
+            min_quantity="1",
+            market_offset="1",
+        )
+        .build()
+    )
+    limited = StrategyRunner.from_config(offset).run()
+    assert limited.gateway == "LocalPaperOrderGateway"
+    assert {step["order_type"] for step in limited.trace} == {"LIMIT"}
+
+    live = backtest.to_builder().set_mode("live_broker").set_gateway("recording").build()
+    recorded = StrategyRunner.from_config(live).run()
+    assert recorded.gateway == "RecordingOrderGateway"
+    assert {step["gateway"] for step in recorded.trace} == {"RecordingOrderGateway"}
+    assert {step["status"] for step in recorded.trace} == {"ACCEPTED"}
+    assert {Decimal(step["filled_quantity"]) for step in recorded.trace} == {Decimal(0)}
+    assert recorded.metrics.n_trades == 2

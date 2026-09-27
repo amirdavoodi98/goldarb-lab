@@ -119,6 +119,10 @@ class RunResult:
     config: RunConfig
     signals: list[Any] = field(default_factory=list)
     log: list[Any] = field(default_factory=list)
+    # Class name of the OrderGateway ``runtime.mode`` selected.
+    gateway: str = ""
+    # One dict per OrderGateway.submit, captured at submit time.
+    trace: list[dict[str, str]] = field(default_factory=list)
 
 
 def compute_metrics(
@@ -353,6 +357,7 @@ class SimulationEngine:
                 n_signals=len(loop.ctx.signals),
                 initial_cash=account.initial_cash,
             )
+            selected = gateway if gateway is not None else loop.ctx.order_gateway
             return RunResult(
                 account_id=account_id,
                 portfolio=portfolio,
@@ -363,6 +368,12 @@ class SimulationEngine:
                 config=recorded,
                 signals=list(loop.ctx.signals),
                 log=list(loop.ctx.log),
+                gateway="" if selected is None else type(selected).__name__,
+                trace=[
+                    dict(event.payload)
+                    for event in loop.ctx.log
+                    if event.kind == "order"
+                ],
             )
         finally:
             if own:

@@ -435,7 +435,9 @@ class StrategyRunner:
         ``backtest``, ``offline_backtest``, and ``live_paper_local`` use
         ``LocalPaperOrderGateway``; ``live_paper_remote`` uses
         ``RemoteSimulatorOrderGateway``. ``live_broker`` uses the registered
-        ``OrderGateway`` and does not build a paper matcher. An injected
+        ``OrderGateway``, or ``RecordingOrderGateway`` when
+        ``runtime.gateway`` is ``recording``. It does not build a paper
+        matcher. An injected
         ``set_broker`` object keeps its own type on paper modes. The bool
         is true when this method opened the local database and must close it.
         """
@@ -480,12 +482,15 @@ class StrategyRunner:
         """Build the live_broker gateway. No brokerage client.
 
         ``runtime.broker`` of ``agah`` or ``mofid`` is not a transport.
-        With nothing registered this raises ``TransportNotConfigured``.
-        ``use_recording_gateway`` registers a recorder that does not send
-        orders. A registered gateway's ledger is the account book; matching
-        stays off.
+        ``runtime.gateway=recording`` selects ``RecordingOrderGateway``.
+        A gateway registered in code wins. With neither, this raises
+        ``TransportNotConfigured``. The recorder does not send orders.
+        Its ledger is the account book; matching stays off.
         """
         gateway = self._order_gateway
+        if gateway is None and self.config.runtime.gateway == "recording":
+            gateway = RecordingOrderGateway()
+            self._order_gateway = gateway
         if gateway is None:
             raise TransportNotConfigured("transport not configured")
         ledger = getattr(gateway, "ledger", None)
