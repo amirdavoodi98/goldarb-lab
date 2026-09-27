@@ -12,9 +12,10 @@ stays on the server.
 only the phase-2 paper preset.
 
 ``live_broker`` is a separate, explicit mode. It does not use those paper
-adapters. With no gateway registered it raises ``TransportNotConfigured``.
-``RecordingOrderGateway`` records submit and cancel and later hands fills
-to ``on_fill``. It does not open a brokerage connection.
+adapters. With no gateway registered and ``runtime.gateway`` empty it
+raises ``TransportNotConfigured``. ``runtime.gateway=recording`` selects
+``RecordingOrderGateway``, which records submit and cancel and later hands
+fills to ``on_fill``. It does not open a brokerage connection.
 """
 
 from __future__ import annotations

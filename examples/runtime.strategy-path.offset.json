@@ -1,0 +1,38 @@
+{
+  "data": {
+    "provider": "archive",
+    "source": "examples/data/strategy-path",
+    "symbols": ["طلا", "زر"],
+    "grain": "1s",
+    "start": "2026-08-29",
+    "end": "2026-08-29",
+    "fill_session": false,
+    "session_hours": false,
+    "quote_fill": "last"
+  },
+  "runtime": {
+    "mode": "backtest",
+    "broker": "agah",
+    "allow_short": true,
+    "initial_cash": "1000000",
+    "database": ":memory:"
+  },
+  "strategy": {
+    "name": "bubble_rank",
+    "params": {
+      "capital_per_side": "100000",
+      "window_days": 20,
+      "min_samples": 10,
+      "min_gap": 1.0
+    }
+  },
+  "execution_policy": {
+    "name": "OffsetLimit",
+    "params": {
+      "quantity_quantum": "1",
+      "price_tick": "1",
+      "min_quantity": "1",
+      "market_offset": "1"
+    }
+  }
+}
