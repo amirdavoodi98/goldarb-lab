@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 from goldarb import BacktestEngine, PairZScoreStrategy, RunConfig
 from goldarb.data import HistoricalDataProvider, cross_section_1s
-from goldarb.execution import PercentFee
+from goldarb.execution import FixedLatency, PercentFee
 from goldarb.signals.pair_spread import compute_pair_spread_stats
-from goldarb.simulation import LocalSimulator, Side
+from goldarb.simulation import LocalSimulator, MarketSnapshot, OrderStatus, Quote, Side
 from goldarb.universe import GOLD_FUND_SYMBOLS
 
 
@@ -125,3 +126,96 @@ def test_spread_uses_same_snapshot_not_index_zip(tmp_path):
     assert strategy._spread_series() == [0.0] * 11
     assert strategy.events == []
     assert result.orders == []
+
+
+def _zscore_snapshots(premiums: list[tuple[float, float]]) -> list[MarketSnapshot]:
+    origin = datetime(2026, 8, 29, 8, 30, tzinfo=UTC)
+    snapshots: list[MarketSnapshot] = []
+    for index, (prem_a, prem_b) in enumerate(premiums):
+        timestamp = origin + timedelta(seconds=index)
+        snapshots.append(
+            MarketSnapshot(
+                event_id=f"z:{index}",
+                timestamp=timestamp,
+                quotes=(
+                    Quote(symbol="طلا", last=Decimal("20000"), premium=Decimal(str(prem_a))),
+                    Quote(symbol="زر", last=Decimal("10000"), premium=Decimal(str(prem_b))),
+                ),
+            )
+        )
+    return snapshots
+
+
+def _hot_spreads() -> list[tuple[float, float]]:
+    premiums = [(0.0, 0.0)] * 15
+    for index in range(12):
+        delta = float(index)
+        premiums.append((5.0 + delta, -5.0 - delta))
+    return premiums
+
+
+def _run_zscore(strategy, snapshots, tmp_path, name, *, latency_ms: int):
+    return BacktestEngine().run(
+        strategy,
+        HistoricalDataProvider(snapshots),
+        RunConfig(
+            strategy_name="pair_zscore",
+            initial_cash="1000000",
+            allow_short=True,
+        ),
+        simulator=LocalSimulator(tmp_path / name),
+        fee=PercentFee("0"),
+        latency=FixedLatency(latency_ms),
+    )
+
+
+def _zscore():
+    return PairZScoreStrategy(
+        fund_a="طلا",
+        fund_b="زر",
+        window_days=20,
+        min_samples=10,
+        z_threshold=1.5,
+        capital_per_side="100000",
+    )
+
+
+def test_open_pair_fills_on_a_later_tick_when_latency_is_set(tmp_path):
+    strategy = _zscore()
+    result = _run_zscore(
+        strategy,
+        _zscore_snapshots(_hot_spreads()),
+        tmp_path,
+        "latency.db",
+        latency_ms=2500,
+    )
+    assert [item["type"] for item in strategy.events] == ["enter_pair"]
+    assert len(result.orders) == 2
+    assert all(order.status == OrderStatus.FILLED for order in result.orders)
+    assert not any("flatten" in order.client_order_id for order in result.orders)
+    buy = next(order for order in result.orders if order.side == Side.BUY)
+    buy_fill = next(fill for fill in result.fills if fill.order_id == buy.id)
+    assert buy_fill.filled_at > buy.submitted_at
+    held = {item.symbol: item.quantity for item in result.portfolio.positions}
+    assert held["زر"] > 0
+    assert held["طلا"] < 0
+
+
+def test_open_pair_fills_both_legs_with_zero_latency(tmp_path):
+    strategy = _zscore()
+    result = _run_zscore(
+        strategy,
+        _zscore_snapshots(_hot_spreads()),
+        tmp_path,
+        "instant.db",
+        latency_ms=0,
+    )
+    assert [item["type"] for item in strategy.events] == ["enter_pair"]
+    assert len(result.orders) == 2
+    assert all(order.status == OrderStatus.FILLED for order in result.orders)
+    buy = next(order for order in result.orders if order.side == Side.BUY)
+    buy_fill = next(fill for fill in result.fills if fill.order_id == buy.id)
+    assert buy_fill.filled_at == buy.submitted_at
+    held = {item.symbol: item.quantity for item in result.portfolio.positions}
+    assert held["زر"] > 0
+    assert held["طلا"] < 0

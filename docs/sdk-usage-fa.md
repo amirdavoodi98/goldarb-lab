@@ -133,13 +133,16 @@ from goldarb import BubbleRankStrategy, LabClient, iran_session_live, month_back
 
 strategy = BubbleRankStrategy(capital_per_side="100000000", min_samples=10, min_gap=1.0)
 with LabClient.from_env() as client:
-    month = month_backtest(strategy, client, days=30, grain="1s", fill_session=True)
+    month = month_backtest(
+        strategy, client, days=30, grain="1s", fill_session=True, allow_short=True
+    )
     live = iran_session_live(
         strategy,
         client,
         poll_seconds=1.0,
         lookback_days=0,
         include_session_bars=False,
+        allow_short=True,
     )
 ```
 
@@ -150,7 +153,7 @@ with LabClient.from_env() as client:
 
 اگر فقط لایو را بدون بک‌تست ماهانه می‌زنید، برای گرم‌کردن پنجره از `lookback_days=20` استفاده کنید.
 
-استراتژی جفت نیاز به `allow_short=True` (پیش‌فرض همین پایپلاین‌ها) و پریمیوم روی کوت دارد (`premium` یا close+NAV).
+استراتژی جفت نیاز به `allow_short=True` صریح دارد. پایپلاین‌ها دیگر آن را پنهان `true` نمی‌گذارند. پریمیوم روی کوت لازم است (`premium` یا close+NAV).
 
 خروجی هر دو تابع `RunResult` است: سفارش، فیل، پورتفوی، متریک، لاگ.
 

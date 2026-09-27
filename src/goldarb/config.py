@@ -17,7 +17,26 @@ RUNTIME_MODES = {
     "offline_backtest",
     "live_paper_local",
     "live_paper_remote",
+    "live_broker",
 }
+
+# Modes that poll a live market feed. ``live_broker`` is an order destination,
+# not a data feed, and is not included here. No config defaults to it.
+LIVE_PAPER_MODES = frozenset({"live_paper_local", "live_paper_remote"})
+
+# Paper presets only. Empty means fee and allow_short come from this config.
+# ``agah`` / ``mofid`` supply those two fields unless the config set them.
+PAPER_BROKER_CODES = frozenset({"", "agah", "mofid"})
+
+# ``recording`` is the offline live_broker OrderGateway. It is not a broker
+# preset and it does not open a connection. Empty leaves live_broker with
+# whatever was registered in code, or TransportNotConfigured.
+ORDER_GATEWAY_CODES = frozenset({"", "recording"})
+
+# How bid/ask are shaped before a MarketSnapshot is built.
+# ``last`` clears the book so matching falls back to last (close-fill backtests).
+# ``book`` keeps a real touch and copies last into bid/ask when the book is missing.
+QUOTE_FILL_MODES = frozenset({"last", "book"})
 
 
 def _mapping(value: Any, name: str) -> dict[str, Any]:
@@ -55,6 +74,16 @@ class ModelConfig:
 
 @dataclass(frozen=True)
 class DataConfig:
+    """Market-data selection and quote touch rule.
+
+    ``quote_fill`` is applied before a snapshot is built:
+
+    - ``last`` (default): clear bid and ask so ``QuoteMatching`` falls back
+      to last. Existing close-fill backtests stay on last.
+    - ``book``: keep a real bid/ask. When there is no book, copy last into
+      bid and ask.
+    """
+
     provider: str = "goldarb_api"
     source: str = ""
     dataset: str = "fund-bars"
@@ -64,6 +93,14 @@ class DataConfig:
     end: str | None = None
     fill_session: bool = True
     session_hours: bool = True
+    quote_fill: str = "last"
+
+    def __post_init__(self) -> None:
+        mode = str(self.quote_fill).strip().lower()
+        if mode not in QUOTE_FILL_MODES:
+            raise ValueError("data.quote_fill must be 'last' or 'book'")
+        if mode != self.quote_fill:
+            object.__setattr__(self, "quote_fill", mode)
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any] | None) -> Self:
@@ -85,17 +122,49 @@ class DataConfig:
             end=None if item.get("end") is None else str(item["end"]),
             fill_session=bool(item.get("fill_session", True)),
             session_hours=bool(item.get("session_hours", True)),
+            quote_fill=str(item.get("quote_fill") or "last"),
         )
 
 
 @dataclass(frozen=True)
 class RuntimeConfig:
+    """Execution mode and paper-account terms.
+
+    ``broker`` is a paper preset name (``agah``, ``mofid``) or ``""``.
+    It does not select transport. ``agah`` alone never sends a live order.
+    Paper modes still choose ``LocalPaperBroker`` or ``RemoteSimulator``.
+    ``live_broker`` is explicit: nothing defaults to it. ``gateway`` of
+    ``recording`` selects ``RecordingOrderGateway`` for that mode only.
+    A registered gateway in code still wins. This phase does not add a
+    brokerage client.
+
+    ``allow_short_set`` is true when the mapping or a setter provided
+    ``allow_short``. An unset flag lets an ``agah``/``mofid`` preset fill it.
+    """
+
     mode: str = "backtest"
     initial_cash: str = "1000000000"
     allow_short: bool = False
     database: str | None = None
     account_id: str | None = None
     label: str = ""
+    broker: str = ""
+    gateway: str = ""
+    state_path: str = ""
+    reset_history: bool = False
+    allow_short_set: bool = False
+
+    def __post_init__(self) -> None:
+        broker = str(self.broker or "").strip().lower()
+        if broker not in PAPER_BROKER_CODES:
+            raise ValueError("runtime.broker must be '', 'agah', or 'mofid'")
+        if broker != self.broker:
+            object.__setattr__(self, "broker", broker)
+        gateway = str(self.gateway or "").strip().lower()
+        if gateway not in ORDER_GATEWAY_CODES:
+            raise ValueError("runtime.gateway must be '' or 'recording'")
+        if gateway != self.gateway:
+            object.__setattr__(self, "gateway", gateway)
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any] | None) -> Self:
@@ -103,13 +172,19 @@ class RuntimeConfig:
         mode = str(item.get("mode") or "backtest").strip().lower()
         if mode not in RUNTIME_MODES:
             raise ValueError(f"runtime.mode must be one of: {', '.join(sorted(RUNTIME_MODES))}")
+        allow_short_set = "allow_short" in item
         return cls(
             mode=mode,
             initial_cash=str(item.get("initial_cash", "1000000000")),
-            allow_short=bool(item.get("allow_short", False)),
+            allow_short=bool(item["allow_short"]) if allow_short_set else False,
             database=None if item.get("database") is None else str(item["database"]),
             account_id=None if item.get("account_id") is None else str(item["account_id"]),
             label=str(item.get("label") or ""),
+            broker=str(item.get("broker") or ""),
+            gateway=str(item.get("gateway") or ""),
+            state_path=str(item.get("state_path") or ""),
+            reset_history=bool(item.get("reset_history", False)),
+            allow_short_set=allow_short_set,
         )
 
 
@@ -167,6 +242,11 @@ class AppConfig:
     )
     slippage: ModelConfig = field(default_factory=lambda: ModelConfig("NoSlippage"))
     latency: ModelConfig = field(default_factory=lambda: ModelConfig("NoLatency"))
+    # ``NoOp`` leaves strategy orders unchanged. ``OffsetLimit`` rounds size
+    # and rewrites MARKET to LIMIT. Params are not brokerage protocol numbers.
+    execution_policy: ModelConfig = field(default_factory=lambda: ModelConfig("NoOp"))
+    # True when ``fee`` was present in the file or set_fee was called.
+    fee_set: bool = False
 
     @classmethod
     def builder(cls, base: AppConfig | None = None) -> AppConfigBuilder:
@@ -188,6 +268,8 @@ class AppConfig:
             fee=ModelConfig.from_value(item.get("fee"), "PercentFee"),
             slippage=ModelConfig.from_value(item.get("slippage"), "NoSlippage"),
             latency=ModelConfig.from_value(item.get("latency"), "NoLatency"),
+            execution_policy=ModelConfig.from_value(item.get("execution_policy"), "NoOp"),
+            fee_set="fee" in item,
         )
         config.validate()
         return config
@@ -219,7 +301,7 @@ class AppConfig:
         archive_provider = self.data.provider in {"jsonl", "parquet", "archive"}
         if mode == "offline_backtest" and not archive_provider:
             raise ValueError("offline_backtest requires jsonl, parquet, or archive provider")
-        if mode.startswith("live_") and archive_provider:
+        if mode in LIVE_PAPER_MODES and archive_provider:
             raise ValueError("live runtime requires a GoldArb live/API provider")
         if archive_provider and not self.data.source:
             raise ValueError("archive data provider requires data.source")
@@ -260,8 +342,12 @@ class AppConfigBuilder:
         self._session = replace(seed.session)
         self._strategy = replace(seed.strategy, params=dict(seed.strategy.params))
         self._fee = ModelConfig(seed.fee.name, dict(seed.fee.params))
+        self._fee_set = bool(seed.fee_set)
         self._slippage = ModelConfig(seed.slippage.name, dict(seed.slippage.params))
         self._latency = ModelConfig(seed.latency.name, dict(seed.latency.params))
+        self._execution_policy = ModelConfig(
+            seed.execution_policy.name, dict(seed.execution_policy.params)
+        )
 
     # --- load / merge -------------------------------------------------
 
@@ -278,8 +364,12 @@ class AppConfigBuilder:
         self._session = replace(loaded.session)
         self._strategy = replace(loaded.strategy, params=dict(loaded.strategy.params))
         self._fee = ModelConfig(loaded.fee.name, dict(loaded.fee.params))
+        self._fee_set = bool(loaded.fee_set)
         self._slippage = ModelConfig(loaded.slippage.name, dict(loaded.slippage.params))
         self._latency = ModelConfig(loaded.latency.name, dict(loaded.latency.params))
+        self._execution_policy = ModelConfig(
+            loaded.execution_policy.name, dict(loaded.execution_policy.params)
+        )
         return self
 
     # --- runtime ------------------------------------------------------
@@ -296,7 +386,47 @@ class AppConfigBuilder:
         return self
 
     def set_allow_short(self, allow: bool) -> Self:
-        self._runtime = replace(self._runtime, allow_short=bool(allow))
+        self._runtime = replace(
+            self._runtime,
+            allow_short=bool(allow),
+            allow_short_set=True,
+        )
+        return self
+
+    def set_broker(self, broker: str) -> Self:
+        """Paper preset code: ``""``, ``agah``, or ``mofid``.
+
+        This is not ``StrategyRunner.set_broker`` and not a live transport.
+        Paper modes still build ``LocalPaperBroker`` or ``RemoteSimulator``
+        from ``runtime.mode``. ``live_broker`` ignores this code. Select the
+        offline recorder with ``set_gateway("recording")``.
+        """
+        code = str(broker or "").strip().lower()
+        if code not in PAPER_BROKER_CODES:
+            raise ValueError("runtime.broker must be '', 'agah', or 'mofid'")
+        self._runtime = replace(self._runtime, broker=code)
+        return self
+
+    def set_gateway(self, gateway: str) -> Self:
+        """``""`` or ``recording``. Not a brokerage client.
+
+        ``recording`` selects ``RecordingOrderGateway`` when ``runtime.mode``
+        is ``live_broker`` and no gateway was registered in code. Paper modes
+        ignore this field and keep the adapter ``runtime.mode`` already chose.
+        """
+        code = str(gateway or "").strip().lower()
+        if code not in ORDER_GATEWAY_CODES:
+            raise ValueError("runtime.gateway must be '' or 'recording'")
+        self._runtime = replace(self._runtime, gateway=code)
+        return self
+
+    def set_state_path(self, path: str | Path | None) -> Self:
+        value = "" if path is None else str(path)
+        self._runtime = replace(self._runtime, state_path=value)
+        return self
+
+    def set_reset_history(self, reset: bool) -> Self:
+        self._runtime = replace(self._runtime, reset_history=bool(reset))
         return self
 
     def set_database(self, database: str | Path | None) -> Self:
@@ -324,6 +454,9 @@ class AppConfigBuilder:
         database: str | Path | None = ...,  # type: ignore[assignment]
         account_id: str | None = ...,  # type: ignore[assignment]
         label: str | None = None,
+        broker: str | None = None,
+        state_path: str | Path | None = None,
+        reset_history: bool | None = None,
     ) -> Self:
         if mode is not None:
             self.set_mode(mode)
@@ -337,6 +470,12 @@ class AppConfigBuilder:
             self.set_account_id(account_id)  # type: ignore[arg-type]
         if label is not None:
             self.set_label(label)
+        if broker is not None:
+            self.set_broker(broker)
+        if state_path is not None:
+            self.set_state_path(state_path)
+        if reset_history is not None:
+            self.set_reset_history(reset_history)
         return self
 
     # --- data ---------------------------------------------------------
@@ -380,6 +519,14 @@ class AppConfigBuilder:
         self._data = replace(self._data, session_hours=bool(enabled))
         return self
 
+    def set_quote_fill(self, quote_fill: str) -> Self:
+        """``last`` (default) or ``book``. See ``DataConfig.quote_fill``."""
+        mode = str(quote_fill).strip().lower()
+        if mode not in QUOTE_FILL_MODES:
+            raise ValueError("data.quote_fill must be 'last' or 'book'")
+        self._data = replace(self._data, quote_fill=mode)
+        return self
+
     def set_data(
         self,
         *,
@@ -392,6 +539,7 @@ class AppConfigBuilder:
         end: str | None = ...,  # type: ignore[assignment]
         fill_session: bool | None = None,
         session_hours: bool | None = None,
+        quote_fill: str | None = None,
     ) -> Self:
         if provider is not None:
             self.set_provider(provider)
@@ -411,6 +559,8 @@ class AppConfigBuilder:
             self.set_fill_session(fill_session)
         if session_hours is not None:
             self.set_session_hours(session_hours)
+        if quote_fill is not None:
+            self.set_quote_fill(quote_fill)
         return self
 
     def set_archive(
@@ -543,6 +693,7 @@ class AppConfigBuilder:
 
     def set_fee(self, name: str = "PercentFee", **params: Any) -> Self:
         self._fee = ModelConfig(str(name), dict(params))
+        self._fee_set = True
         return self
 
     def set_slippage(self, name: str = "NoSlippage", **params: Any) -> Self:
@@ -551,6 +702,16 @@ class AppConfigBuilder:
 
     def set_latency(self, name: str = "NoLatency", **params: Any) -> Self:
         self._latency = ModelConfig(str(name), dict(params))
+        return self
+
+    def set_execution_policy(self, name: str = "NoOp", **params: Any) -> Self:
+        """Paper venue translation. ``NoOp`` or ``OffsetLimit``.
+
+        ``OffsetLimit`` params: ``quantity_quantum``, ``price_tick``,
+        ``min_quantity``, ``market_offset``, ``time_in_force``.
+        Omit a tick, minimum, or offset rather than copying an exchange schedule.
+        """
+        self._execution_policy = ModelConfig(str(name), dict(params))
         return self
 
     # --- finish -------------------------------------------------------
@@ -564,6 +725,10 @@ class AppConfigBuilder:
             fee=ModelConfig(self._fee.name, dict(self._fee.params)),
             slippage=ModelConfig(self._slippage.name, dict(self._slippage.params)),
             latency=ModelConfig(self._latency.name, dict(self._latency.params)),
+            execution_policy=ModelConfig(
+                self._execution_policy.name, dict(self._execution_policy.params)
+            ),
+            fee_set=self._fee_set,
         )
         config.validate()
         return config
@@ -574,6 +739,8 @@ __all__ = [
     "AppConfigBuilder",
     "DataConfig",
     "ModelConfig",
+    "PAPER_BROKER_CODES",
+    "QUOTE_FILL_MODES",
     "RUNTIME_MODES",
     "RuntimeConfig",
     "SessionConfig",

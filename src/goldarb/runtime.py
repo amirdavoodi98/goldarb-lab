@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime, time
 from decimal import Decimal
@@ -10,7 +11,7 @@ from typing import Any, Callable, Mapping, Self
 from zoneinfo import ZoneInfo
 
 from .client import LabClient
-from .config import AppConfig, AppConfigBuilder, ModelConfig, StrategyConfig
+from .config import LIVE_PAPER_MODES, AppConfig, AppConfigBuilder, ModelConfig, StrategyConfig
 from .data import HistoricalDataProvider, LiveDataProvider
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
 from .execution import (
@@ -29,8 +30,23 @@ from .execution import (
     ServerSideExecution,
     SlippageModel,
 )
+from .execution_policy import (
+    REMOTE_POLICY_ERROR,
+    ExecutionPolicy,
+    NoOpExecutionPolicy,
+    OffsetLimitPolicy,
+    policy_is_noop,
+)
+from .gateway import (
+    OrderGateway,
+    RecordingOrderGateway,
+    TransportNotConfigured,
+    order_gateway_for,
+)
 from .session import grain_step
 from .simulation import RemoteSimulator
+from .simulation.brokers import get_broker
+from .simulation.paper_broker import LocalPaperBroker
 from .sources import ArchiveDatasetSource, historical_source, live_source
 from .strategies import (
     BubbleRankStrategy,
@@ -66,6 +82,18 @@ SLIPPAGE_MODELS: dict[str, SlippageFactory] = {
 LATENCY_MODELS: dict[str, LatencyFactory] = {
     "nolatency": lambda p: NoLatency(),
     "fixedlatency": lambda p: FixedLatency(int(p.get("milliseconds", 0))),
+}
+
+
+def _noop_execution_policy(params: dict[str, Any]) -> NoOpExecutionPolicy:
+    if params:
+        raise ValueError("NoOp execution policy does not take parameters")
+    return NoOpExecutionPolicy()
+
+
+EXECUTION_POLICIES: dict[str, Callable[[dict[str, Any]], ExecutionPolicy]] = {
+    "noop": _noop_execution_policy,
+    "offsetlimit": lambda p: OffsetLimitPolicy.from_params(p),
 }
 
 STRATEGY_REGISTRY: dict[str, StrategyFactory] = {
@@ -105,6 +133,10 @@ def build_slippage(config: ModelConfig) -> SlippageModel:
 
 def build_latency(config: ModelConfig) -> LatencyModel:
     return _model(config, LATENCY_MODELS)
+
+
+def build_execution_policy(config: ModelConfig) -> ExecutionPolicy:
+    return _model(config, EXECUTION_POLICIES)
 
 
 def build_strategy(
@@ -175,8 +207,12 @@ class StrategyRunner:
         self.client = client
         self._owns_client = False
         self._broker: Broker | None = None
+        self._order_gateway: OrderGateway | None = None
         self._execution: ExecutionDriver | None = None
         self._strategy: Strategy | None = None
+        self._live_sleep: Callable[[float], None] | None = None
+        self._live_now: Callable[[], datetime] | None = None
+        self._live_stop_at: datetime | None = None
 
     @classmethod
     def from_config(
@@ -198,6 +234,27 @@ class StrategyRunner:
         self._broker = broker
         return self
 
+    def set_order_gateway(self, gateway: OrderGateway | None) -> Self:
+        """Register the ``live_broker`` OrderGateway.
+
+        Paper modes ignore this object. ``runtime.broker`` does not register
+        one. ``None`` leaves ``live_broker`` with no transport.
+        """
+        self._order_gateway = gateway
+        return self
+
+    def use_recording_gateway(self) -> Self:
+        """Build a ``RecordingOrderGateway`` for ``live_broker``.
+
+        The gateway records submit and cancel. It does not open a connection.
+        """
+        self._order_gateway = RecordingOrderGateway()
+        return self
+
+    @property
+    def order_gateway(self) -> OrderGateway | None:
+        return self._order_gateway
+
     def set_execution(self, execution: ExecutionDriver | None) -> Self:
         """Override market-ingress driver (LocalFeed vs ServerSide)."""
         self._execution = execution
@@ -212,6 +269,19 @@ class StrategyRunner:
         """Use an existing ``LabClient`` (runner will not close it)."""
         self.client = client
         self._owns_client = False
+        return self
+
+    def set_live_clock(
+        self,
+        *,
+        sleep: Callable[[float], None] | None = None,
+        now: Callable[[], datetime] | None = None,
+        stop_at: datetime | None = None,
+    ) -> Self:
+        """Forward clock hooks to ``LiveDataProvider``. Not an ``AppConfig`` field."""
+        self._live_sleep = sleep
+        self._live_now = now
+        self._live_stop_at = stop_at
         return self
 
     def _client(self) -> Any:
@@ -244,6 +314,7 @@ class StrategyRunner:
                 session_zone=zone,
                 session_open=open_at,
                 session_close=close_at,
+                quote_fill=data.quote_fill,
             )
         rows = source.bars(
             data.symbols,
@@ -261,6 +332,7 @@ class StrategyRunner:
             session_zone=zone,
             session_open=open_at,
             session_close=close_at,
+            quote_fill=data.quote_fill,
         )
 
     def _live_provider(self) -> LiveDataProvider:
@@ -271,7 +343,7 @@ class StrategyRunner:
         today = datetime.now(zone).date()
         stop_parts = time.fromisoformat(session.end)
         open_parts = time.fromisoformat(session.start)
-        stop_at = datetime.combine(today, stop_parts, tzinfo=zone)
+        stop_at = self._live_stop_at or datetime.combine(today, stop_parts, tzinfo=zone)
         return LiveDataProvider(
             feed,
             symbols=data.symbols,
@@ -281,9 +353,56 @@ class StrategyRunner:
             lookback_days=session.lookback_days,
             stop_at=stop_at,
             max_polls=session.max_polls,
+            sleep=self._live_sleep,
+            now=self._live_now,
             session_zone=zone,
             session_open=open_parts,
             session_close=stop_parts,
+            quote_fill=data.quote_fill,
+        )
+
+    def _paper_terms(self) -> tuple[bool, ModelConfig]:
+        """Fee model and allow_short for the paper account.
+
+        ``runtime.broker`` of ``agah`` or ``mofid`` fills whichever of those
+        two the config did not set. The preset object is not the engine broker.
+        """
+        runtime = self.config.runtime
+        allow_short = runtime.allow_short
+        fee = self.config.fee
+        code = runtime.broker.strip().lower()
+        if not code:
+            return allow_short, fee
+        preset = get_broker(code)
+        if not runtime.allow_short_set:
+            allow_short = bool(preset.allow_short)
+        if not self.config.fee_set:
+            fee = ModelConfig("PercentFee", {"fee_rate": str(preset.fee_rate)})
+        return allow_short, fee
+
+    def _state_file(self) -> Path | None:
+        raw = self.config.runtime.state_path.strip()
+        if not raw:
+            return None
+        return Path(raw)
+
+    def _load_strategy_state(self, strategy: Strategy) -> None:
+        path = self._state_file()
+        if path is None or not path.is_file():
+            return
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError(f"strategy state must be an object: {path}")
+        strategy.load_state(payload)
+
+    def _save_strategy_state(self, strategy: Strategy) -> None:
+        path = self._state_file()
+        if path is None:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(strategy.export_state(), ensure_ascii=False),
+            encoding="utf-8",
         )
 
     def run(self, strategy: Strategy | None = None) -> RunResult:
@@ -306,16 +425,34 @@ class StrategyRunner:
     def _resolve_broker_and_execution(
         self,
         *,
+        fee: FeeModel,
         slippage: SlippageModel,
         latency: LatencyModel,
-    ) -> tuple[Broker | None, ExecutionDriver]:
+    ) -> tuple[Broker, ExecutionDriver, OrderGateway, bool]:
+        """Build the paper engine, its ingress, and the only OrderGateway.
+
+        ``runtime.broker`` is not transport. ``runtime.mode`` is:
+        ``backtest``, ``offline_backtest``, and ``live_paper_local`` use
+        ``LocalPaperOrderGateway``; ``live_paper_remote`` uses
+        ``RemoteSimulatorOrderGateway``. ``live_broker`` uses the registered
+        ``OrderGateway``, or ``RecordingOrderGateway`` when
+        ``runtime.gateway`` is ``recording``. It does not build a paper
+        matcher. An injected
+        ``set_broker`` object keeps its own type on paper modes. The bool
+        is true when this method opened the local database and must close it.
+        """
         runtime = self.config.runtime
+        if runtime.mode == "live_broker":
+            return self._resolve_live_broker()
         if self._broker is not None:
-            if self._execution is not None:
-                return self._broker, self._execution
-            if isinstance(self._broker, RemoteSimulator):
-                return self._broker, ServerSideExecution()
-            return self._broker, LocalFeedExecution()
+            execution = self._execution
+            if execution is None:
+                execution = (
+                    ServerSideExecution()
+                    if isinstance(self._broker, RemoteSimulator)
+                    else LocalFeedExecution()
+                )
+            return self._broker, execution, order_gateway_for(self._broker), False
 
         if runtime.mode == "live_paper_remote":
             if not isinstance(slippage, NoSlippage) or not isinstance(latency, NoLatency):
@@ -323,44 +460,106 @@ class StrategyRunner:
                     "remote paper matching only supports NoSlippage and NoLatency; "
                     "configure execution effects on the server"
                 )
-            return self._client().simulation, self._execution or ServerSideExecution()
+            remote = self._client().simulation
+            return (
+                remote,
+                self._execution or ServerSideExecution(),
+                order_gateway_for(remote),
+                False,
+            )
 
-        return None, self._execution or LocalFeedExecution()
+        local = LocalPaperBroker(
+            runtime.database or ":memory:",
+            fee=fee,
+            slippage=slippage,
+            latency=latency,
+        )
+        return local, self._execution or LocalFeedExecution(), order_gateway_for(local), True
+
+    def _resolve_live_broker(
+        self,
+    ) -> tuple[Broker, ExecutionDriver, OrderGateway, bool]:
+        """Build the live_broker gateway. No brokerage client.
+
+        ``runtime.broker`` of ``agah`` or ``mofid`` is not a transport.
+        ``runtime.gateway=recording`` selects ``RecordingOrderGateway``.
+        A gateway registered in code wins. With neither, this raises
+        ``TransportNotConfigured``. The recorder does not send orders.
+        Its ledger is the account book; matching stays off.
+        """
+        gateway = self._order_gateway
+        if gateway is None and self.config.runtime.gateway == "recording":
+            gateway = RecordingOrderGateway()
+            self._order_gateway = gateway
+        if gateway is None:
+            raise TransportNotConfigured("transport not configured")
+        ledger = getattr(gateway, "ledger", None)
+        if ledger is None or not hasattr(ledger, "create_account"):
+            raise TypeError(
+                "live_broker OrderGateway must expose a ledger; "
+                "this phase does not include a brokerage client"
+            )
+        return ledger, ServerSideExecution(), gateway, False
+
+    def _reject_remote_policy(self, policy: ExecutionPolicy) -> None:
+        """Remote paper matches on the server, which does not share this policy."""
+        remote = self.config.runtime.mode == "live_paper_remote" or isinstance(
+            self._broker, RemoteSimulator
+        )
+        if remote and not policy_is_noop(policy):
+            raise ValueError(REMOTE_POLICY_ERROR)
 
     def _run(self, strategy: Strategy) -> RunResult:
         runtime = self.config.runtime
-        is_live = runtime.mode.startswith("live_")
-        fee = build_fee(self.config.fee)
+        policy = build_execution_policy(self.config.execution_policy)
+        self._reject_remote_policy(policy)
+        allow_short, fee_config = self._paper_terms()
+        is_live = runtime.mode in LIVE_PAPER_MODES
+        fee = build_fee(fee_config)
         slippage = build_slippage(self.config.slippage)
         latency = build_latency(self.config.latency)
         provider = self._live_provider() if is_live else self._historical_provider()
         engine = LiveSimulationEngine() if is_live else BacktestEngine()
-        broker, execution = self._resolve_broker_and_execution(
+        broker, execution, gateway, owns_broker = self._resolve_broker_and_execution(
+            fee=fee,
             slippage=slippage,
             latency=latency,
         )
+        strategy_config = {
+            str(key): str(value) for key, value in self.config.strategy.params.items()
+        }
+        if runtime.reset_history:
+            strategy_config["reset_history"] = "true"
         run_config = RunConfig(
             strategy_name=self.config.strategy.name or strategy.name,
             strategy_version=self.config.strategy.version or getattr(strategy, "version", "0"),
             initial_cash=runtime.initial_cash,
-            allow_short=runtime.allow_short,
+            allow_short=allow_short,
             label=runtime.label or strategy.name,
             account_id=runtime.account_id,
             database=runtime.database,
-            strategy_config={
-                str(key): str(value) for key, value in self.config.strategy.params.items()
-            },
+            strategy_config=strategy_config,
         )
-        return engine.run(
-            strategy,
-            provider,
-            run_config,
-            simulator=broker,
-            fee=fee,
-            slippage=slippage,
-            latency=latency,
-            execution=execution,
-        )
+        try:
+            self._load_strategy_state(strategy)
+            result = engine.run(
+                strategy,
+                provider,
+                run_config,
+                simulator=broker,
+                fee=fee,
+                slippage=slippage,
+                latency=latency,
+                execution=execution,
+                execution_policy=policy,
+                quote_fill=self.config.data.quote_fill,
+                gateway=gateway,
+            )
+            self._save_strategy_state(strategy)
+            return result
+        finally:
+            if owns_broker:
+                broker.close()
 
 
 __all__ = [
@@ -369,6 +568,7 @@ __all__ = [
     "SLIPPAGE_MODELS",
     "STRATEGY_REGISTRY",
     "StrategyRunner",
+    "build_execution_policy",
     "build_fee",
     "build_latency",
     "build_slippage",

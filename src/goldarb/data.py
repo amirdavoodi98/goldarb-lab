@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from dataclasses import replace
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
+from .config import QUOTE_FILL_MODES
 from .session import (
     ONE_SECOND,
     SESSION_CLOSE,
@@ -157,6 +159,7 @@ def snapshots_from_cross_section(
     bars: Sequence[tuple[datetime | date, Mapping[str, Mapping[str, Any]]]],
     *,
     event_prefix: str = "cross",
+    quote_fill: str = "last",
 ) -> list[MarketSnapshot]:
     """Build aligned multi-symbol snapshots (close + optional premium/NAV)."""
     snapshots: list[MarketSnapshot] = []
@@ -164,7 +167,7 @@ def snapshots_from_cross_section(
         timestamp = _aware_timestamp(stamp)
         quotes: list[Quote] = []
         for symbol, fields in by_symbol.items():
-            quote = _quote_from_fields(symbol, fields)
+            quote = _quote_from_fields(symbol, fields, quote_fill=quote_fill)
             if quote is not None:
                 quotes.append(quote)
         if not quotes:
@@ -222,6 +225,7 @@ def snapshots_from_symbol_bars(
     session_zone: ZoneInfo = TEHRAN,
     session_open: time = SESSION_OPEN,
     session_close: time = SESSION_CLOSE,
+    quote_fill: str = "last",
 ) -> list[MarketSnapshot]:
     """Align sparse per-symbol bars onto a 1s grid.
 
@@ -240,6 +244,7 @@ def snapshots_from_symbol_bars(
             session_zone=session_zone,
             session_open=session_open,
             session_close=session_close,
+            quote_fill=quote_fill,
         )
     )
 
@@ -255,6 +260,7 @@ def iter_symbol_bar_snapshots(
     session_zone: ZoneInfo = TEHRAN,
     session_open: time = SESSION_OPEN,
     session_close: time = SESSION_CLOSE,
+    quote_fill: str = "last",
 ) -> Iterator[MarketSnapshot]:
     parsed: dict[str, dict[datetime, Quote]] = {}
     stamps: list[datetime] = []
@@ -262,7 +268,7 @@ def iter_symbol_bar_snapshots(
         bucket: dict[datetime, Quote] = {}
         for row in rows:
             timestamp = _bar_timestamp(dict(row))
-            quote = _quote_from_fields(symbol, row)
+            quote = _quote_from_fields(symbol, row, quote_fill=quote_fill)
             if timestamp is None or quote is None:
                 continue
             timestamp = timestamp.astimezone(UTC).replace(microsecond=0)
@@ -421,8 +427,15 @@ class HistoricalDataProvider:
         bars: Sequence[tuple[datetime | date, Mapping[str, Mapping[str, Any]]]],
         *,
         event_prefix: str = "cross",
+        quote_fill: str = "last",
     ) -> HistoricalDataProvider:
-        return cls(snapshots_from_cross_section(bars, event_prefix=event_prefix))
+        return cls(
+            snapshots_from_cross_section(
+                bars,
+                event_prefix=event_prefix,
+                quote_fill=quote_fill,
+            )
+        )
 
     @classmethod
     def from_1s(
@@ -454,8 +467,10 @@ class HistoricalDataProvider:
         session_zone: ZoneInfo = TEHRAN,
         session_open: time = SESSION_OPEN,
         session_close: time = SESSION_CLOSE,
+        quote_fill: str = "last",
     ) -> HistoricalDataProvider:
         """Align API ``grain=1s`` bars onto a 1s Iran-session grid."""
+        mode = _quote_fill_mode(quote_fill)
 
         def factory() -> Iterator[MarketSnapshot]:
             yield from iter_symbol_bar_snapshots(
@@ -468,6 +483,7 @@ class HistoricalDataProvider:
                 session_zone=session_zone,
                 session_open=session_open,
                 session_close=session_close,
+                quote_fill=mode,
             )
 
         if lazy:
@@ -510,6 +526,7 @@ class LiveDataProvider:
         session_zone: ZoneInfo = TEHRAN,
         session_open: time = SESSION_OPEN,
         session_close: time = SESSION_CLOSE,
+        quote_fill: str = "last",
     ) -> None:
         self.feed = feed
         self.symbols = tuple(symbols) if symbols is not None else (symbol,)
@@ -528,6 +545,7 @@ class LiveDataProvider:
         self.session_zone = session_zone
         self.session_open = session_open
         self.session_close = session_close
+        self.quote_fill = _quote_fill_mode(quote_fill)
         self._seen: set[str] = set()
         self._bars_loaded = False
         self._polls = 0
@@ -620,6 +638,7 @@ class LiveDataProvider:
                 session_zone=self.session_zone,
                 session_open=self.session_open,
                 session_close=self.session_close,
+                quote_fill=self.quote_fill,
             )
         )
         if not self.include_session_bars:
@@ -680,6 +699,7 @@ class LiveDataProvider:
                 nav=navs.get(symbol),
                 orderbook=book if isinstance(book, dict) else None,
                 now=clock,
+                quote_fill=self.quote_fill,
             )
             if quote is not None:
                 quotes.append(quote)
@@ -725,6 +745,56 @@ def _symbol_payload_map(payload: Any) -> dict[str, dict[str, Any]]:
     return mapped
 
 
+def normalize_quote(quote: Quote, quote_fill: str = "last") -> Quote:
+    """Shape bid/ask before a ``MarketSnapshot`` is built.
+
+    ``last`` (default) clears bid, ask, and their sizes so ``QuoteMatching``
+    falls back to last. ``book`` keeps a real touch; when neither side is
+    present, last is copied into bid and ask.
+    """
+    mode = _quote_fill_mode(quote_fill)
+    if mode == "last":
+        if (
+            quote.bid is None
+            and quote.ask is None
+            and quote.bid_size is None
+            and quote.ask_size is None
+        ):
+            return quote
+        return replace(quote, bid=None, ask=None, bid_size=None, ask_size=None)
+    if _has_book(quote):
+        return quote
+    if quote.last is None or quote.last <= ZERO:
+        return quote
+    return replace(quote, bid=quote.last, ask=quote.last)
+
+
+def _quote_fill_mode(quote_fill: str) -> str:
+    mode = str(quote_fill or "last").strip().lower()
+    if mode not in QUOTE_FILL_MODES:
+        raise ValueError("data.quote_fill must be 'last' or 'book'")
+    return mode
+
+
+def _has_book(quote: Quote) -> bool:
+    bid = quote.bid is not None and quote.bid > ZERO
+    ask = quote.ask is not None and quote.ask > ZERO
+    return bid or ask
+
+
+def _optional_positive(fields: Mapping[str, Any], *keys: str) -> Decimal | None:
+    for key in keys:
+        if key not in fields:
+            continue
+        raw = fields[key]
+        if raw is None or raw == "":
+            continue
+        number = decimal_value(raw)
+        if number > ZERO:
+            return number
+    return None
+
+
 def _quote_from_live(
     symbol: str,
     last_price: Mapping[str, Any],
@@ -732,6 +802,7 @@ def _quote_from_live(
     nav: Mapping[str, Any] | None = None,
     orderbook: Mapping[str, Any] | None = None,
     now: datetime | None = None,
+    quote_fill: str = "last",
 ) -> Quote | None:
     payload = dict(last_price)
     if nav:
@@ -753,15 +824,18 @@ def _quote_from_live(
         or payload.get("nav_value")
     )
     premium = premium_from_row({"close": base.last, "nav": nav_value, **payload})
-    return Quote(
-        symbol=base.symbol,
-        last=base.last,
-        bid=base.bid,
-        ask=base.ask,
-        bid_size=base.bid_size,
-        ask_size=base.ask_size,
-        premium=None if premium is None else decimal_value(premium),
-        nav=None if nav_value is None else decimal_value(nav_value),
+    return normalize_quote(
+        Quote(
+            symbol=base.symbol,
+            last=base.last,
+            bid=base.bid,
+            ask=base.ask,
+            bid_size=base.bid_size,
+            ask_size=base.ask_size,
+            premium=None if premium is None else decimal_value(premium),
+            nav=None if nav_value is None else decimal_value(nav_value),
+        ),
+        quote_fill,
     )
 
 
@@ -773,7 +847,12 @@ def _aware_timestamp(stamp: datetime | date) -> datetime:
     return datetime.combine(stamp, time.min, tzinfo=UTC)
 
 
-def _quote_from_fields(symbol: str, fields: Mapping[str, Any]) -> Quote | None:
+def _quote_from_fields(
+    symbol: str,
+    fields: Mapping[str, Any],
+    *,
+    quote_fill: str = "last",
+) -> Quote | None:
     close = _bar_close(dict(fields))
     if close is None:
         return None
@@ -782,11 +861,18 @@ def _quote_from_fields(symbol: str, fields: Mapping[str, Any]) -> Quote | None:
     if nav_raw is None:
         nav_raw = fields.get("nav_price")
     nav = to_float(nav_raw)
-    return Quote(
-        symbol=symbol,
-        last=close,
-        premium=None if premium is None else decimal_value(premium),
-        nav=None if nav is None else decimal_value(nav),
+    return normalize_quote(
+        Quote(
+            symbol=symbol,
+            last=close,
+            bid=_optional_positive(fields, "bid", "best_bid"),
+            ask=_optional_positive(fields, "ask", "best_ask"),
+            bid_size=_optional_positive(fields, "bid_size"),
+            ask_size=_optional_positive(fields, "ask_size"),
+            premium=None if premium is None else decimal_value(premium),
+            nav=None if nav is None else decimal_value(nav),
+        ),
+        quote_fill,
     )
 
 
@@ -824,4 +910,5 @@ __all__ = [
     "snapshots_from_symbol_bars",
     "iter_symbol_bar_snapshots",
     "cross_section_1s",
+    "normalize_quote",
 ]

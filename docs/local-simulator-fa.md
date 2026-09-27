@@ -26,6 +26,7 @@ from goldarb.simulation import (
     OrderType,
     Quote,
     Side,
+    get_broker,
 )
 ```
 
@@ -36,7 +37,7 @@ from goldarb.simulation import (
 1. یک فایل SQLite و account ایجاد یا باز کنید.
 2. snapshot بازار را با `feed()` تزریق کنید.
 3. استراتژی خود را خارج از simulator اجرا کنید.
-4. با `submit_order()` سفارش MARKET یا LIMIT ثبت کنید.
+4. با `broker.submit_buy()` یا `broker.submit_sell()` سفارش MARKET یا LIMIT ثبت کنید.
 5. با هر snapshot جدید دوباره `feed()` را فراخوانی کنید.
 6. سفارش‌ها، fillها و portfolio را بخوانید.
 
@@ -50,15 +51,14 @@ from goldarb.simulation import (
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from goldarb.simulation import LocalSimulator, MarketSnapshot, Quote
+from goldarb.simulation import LocalSimulator, MarketSnapshot, Quote, get_broker
 
 database = "paper-simulation.sqlite3"
+broker = get_broker("agah")
 
-with LocalSimulator(database) as simulator:
+with LocalSimulator(database, broker=broker) as simulator:
     account = simulator.create_account(
         initial_cash="1000000000",
-        fee_rate="0.0005",  # 0.05%
-        allow_short=False,
         label="my-local-strategy",
     )
 
@@ -79,18 +79,25 @@ with LocalSimulator(database) as simulator:
         )
     )
 
-    order = simulator.submit_order(
-        account.id,
+    order = broker.submit_buy(
+        account,
         symbol="طلا",
-        side="BUY",
         quantity="100",
         order_type="MARKET",
         client_order_id="strategy-a-buy-0001",
     )
 
     print(order.status)
+    print(broker.get_cash(account))
+    print(broker.list_holdings(account))
+    print(broker.list_orders(account))
     print(simulator.portfolio(account.id))
 ```
+
+نسخهٔ اول آگاه (`agah`) و مفید (`mofid`) هر دو با `fee_rate="0.0005"` و
+`allow_short=False` تطبیق کاغذی می‌کنند. کارمزد و مجوز short از همان آبجکت
+کارگزار می‌آید. اگر کنار کارگزار `fee_rate` صریح بدهید، همان نرخ برای آن حساب
+استفاده می‌شود.
 
 برای ورودی‌های مالی استفاده از string یا `Decimal` توصیه می‌شود؛ از float برای
 قیمت، حجم، سرمایه و کارمزد استفاده نکنید.
@@ -109,15 +116,16 @@ account = simulator.create_account(
 پارامترها:
 
 - `initial_cash`: سرمایه اولیه؛ باید مثبت باشد.
-- `fee_rate`: نرخ کارمزد اعشاری بین صفر و یک؛ `0.001` یعنی ۰.۱ درصد.
-- `allow_short`: اگر `False` باشد، فروش بیشتر از پوزیشن موجود رد می‌شود.
+- `broker`: کارگزار مقصد. اگر ندهید، کارگزار `LocalSimulator(..., broker=...)` روی حساب ذخیره می‌شود (`broker_code`).
+- `fee_rate`: نرخ کارمزد اعشاری بین صفر و یک؛ `0.001` یعنی ۰.۱ درصد. اگر خالی باشد از کارگزار می‌آید و اگر صریح باشد همان مقدار برای حساب است.
+- `allow_short`: اگر داده شود همان مقدار ذخیره می‌شود؛ اگر خالی باشد از کارگزار می‌آید. آگاه و مفید در نسخهٔ اول short را مجاز نمی‌کنند.
 - `label`: نام اختیاری account، حداکثر ۱۲۰ کاراکتر.
 - `account_id`: شناسه اختیاری؛ در حالت عادی UUID خودکار مناسب است.
 
 شناسه account را نگه دارید. برای بازکردن دوباره همان account:
 
 ```python
-with LocalSimulator("paper-simulation.sqlite3") as simulator:
+with LocalSimulator("paper-simulation.sqlite3", broker=get_broker("agah")) as simulator:
     account = simulator.get_account(saved_account_id)
 ```
 
@@ -188,10 +196,9 @@ bid/ask و حجم دو سمت را تزریق کنید.
 ## سفارش MARKET
 
 ```python
-order = simulator.submit_order(
-    account.id,
+order = broker.submit_buy(
+    account,
     symbol="طلا",
-    side=Side.BUY,
     quantity="100",
     order_type=OrderType.MARKET,
     client_order_id="buy-0001",
@@ -211,10 +218,9 @@ snapshotی وجود نداشته باشد، سفارش باز می‌ماند ت
 ## سفارش LIMIT
 
 ```python
-order = simulator.submit_order(
-    account.id,
+order = broker.submit_buy(
+    account,
     symbol="طلا",
-    side="BUY",
     quantity="100",
     order_type="LIMIT",
     limit_price="248000",
@@ -233,7 +239,7 @@ order = simulator.submit_order(
 لغو سفارش باز:
 
 ```python
-cancelled = simulator.cancel_order(account.id, order.id)
+cancelled = broker.cancel_order(order)
 ```
 
 ## وضعیت سفارش‌ها
@@ -248,7 +254,7 @@ cancelled = simulator.cancel_order(account.id, order.id)
 
 ```python
 order = simulator.get_order(account.id, order_id)
-orders = simulator.list_orders(account.id)
+orders = broker.list_orders(account)
 fills = simulator.list_fills(account.id)
 
 for fill in fills:
@@ -271,8 +277,10 @@ client_order_id = f"my-strategy:{signal_timestamp.isoformat()}:طلا:BUY"
 
 ```python
 portfolio = simulator.portfolio(account.id)
+holdings = broker.list_holdings(account)
+cash = broker.get_cash(account)
 
-print("cash:", portfolio.cash)
+print("cash:", cash)
 print("equity:", portfolio.equity)
 print("fees:", portfolio.fees_paid)
 print("realized:", portfolio.realized_pnl)
@@ -313,6 +321,8 @@ for point in simulator.equity_history(account.id):
 ```python
 from decimal import Decimal
 
+from goldarb.simulation import LocalSimulator, get_broker
+
 
 def strategy_signal(close: Decimal, moving_average: Decimal) -> str | None:
     if close < moving_average * Decimal("0.98"):
@@ -322,13 +332,14 @@ def strategy_signal(close: Decimal, moving_average: Decimal) -> str | None:
     return None
 
 
-with LocalSimulator("strategy.sqlite3") as simulator:
+broker = get_broker("agah")
+with LocalSimulator("strategy.sqlite3", broker=broker) as simulator:
     try:
         account = simulator.get_account(saved_account_id)
     except KeyError:
         account = simulator.create_account(
             initial_cash="1000000000",
-            allow_short=True,
+            label="ma strategy",
         )
         saved_account_id = account.id
 
@@ -337,17 +348,21 @@ with LocalSimulator("strategy.sqlite3") as simulator:
         side = strategy_signal(close, moving_average)
         if side is None:
             continue
-
-        simulator.submit_order(
-            account.id,
-            symbol="طلا",
-            side=side,
-            quantity="10",
-            order_type="MARKET",
-            client_order_id=(
-                f"ma-v1:{snapshot.event_id}:طلا:{side}"
-            ),
-        )
+        client_order_id = f"ma-v1:{snapshot.event_id}:طلا:{side}"
+        if side == "BUY":
+            broker.submit_buy(
+                account,
+                symbol="طلا",
+                quantity="10",
+                client_order_id=client_order_id,
+            )
+        else:
+            broker.submit_sell(
+                account,
+                symbol="طلا",
+                quantity="10",
+                client_order_id=client_order_id,
+            )
 
     final_portfolio = simulator.portfolio(account.id)
 ```
@@ -371,8 +386,8 @@ borrow یا liquidation ندارد.
 
 تمام state مهم داخل فایل SQLite ذخیره می‌شود:
 
-- accountها و وجه نقد
-- سفارش‌ها و fillها
+- accountها، وجه نقد و `broker_code`
+- سفارش‌ها، کارگزار مقصد (`broker_code`) و fillها
 - پوزیشن و بهای تمام‌شده
 - آخرین quote هر نماد
 - eventهای پردازش‌شده
@@ -381,7 +396,7 @@ borrow یا liquidation ندارد.
 برای ادامه اجرا، همان مسیر فایل و `account_id` قبلی را استفاده کنید:
 
 ```python
-with LocalSimulator("paper-simulation.sqlite3") as simulator:
+with LocalSimulator("paper-simulation.sqlite3", broker=get_broker("agah")) as simulator:
     account = simulator.get_account(saved_account_id)
     open_orders = [
         order
@@ -406,12 +421,7 @@ with LocalSimulator("paper-simulation.sqlite3") as simulator:
 
 ```python
 try:
-    simulator.submit_order(
-        account.id,
-        symbol="طلا",
-        side="BUY",
-        quantity="0",
-    )
+    broker.submit_buy(account, symbol="طلا", quantity="0")
 except ValueError as exc:
     print("invalid order:", exc)
 ```

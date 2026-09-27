@@ -218,7 +218,7 @@ Hookها:
 - HTTP نزن.
 - فایل آرشیو نخوان.
 - SQLite باز نکن.
-- Broker را مستقیم صدا نزن.
+- Broker را مستقیم صدا نزن. `submit_order` و `cancel_order` فقط از `OrderGateway` داخل `StrategyContext` می‌روند.
 - تصمیم را روی دادهٔ `ctx.market` بگیر، نه روی حدس از زمان سیستم.
 
 پارامترهای قابل تنظیم را در `__init__` بگیر تا از YAML تزریق شوند:
@@ -230,15 +230,20 @@ strategy:
     quantity: "1"
 ```
 
-سپس:
+سپس، برای کلاس خودت:
 
 ```python
 strategy = MyStrategy(**config.strategy.params)
+result = StrategyRunner.from_config(config).run(strategy)
 ```
 
-`StrategyRunner` کلاس Strategy را از روی `name` نمی‌سازد. خودت باید کلاس را import و instantiate کنی.
+`strategy.name` فقط از `STRATEGY_REGISTRY` کلاس می‌سازد. فهرست فاز ۲:
 
-بعد از نوشتن کلاس، آن را در `src/goldarb/strategies/__init__.py` و در صورت نیاز `src/goldarb/__init__.py` export کن.
+`price_momentum`، `bubble_sign`، `bubble_rank`، `pair_zscore`، `ma_band`.
+
+`StrategyRunner.run()` بدون آرگومان همین نام‌های ثبت‌شده را می‌سازد. نامی که در این فهرست نیست کلاس جدید نمی‌سازد و `ValueError` می‌دهد. کلاس خودت را خودت بساز و به `run(strategy)` بده.
+
+بعد از نوشتن کلاس، آن را در `src/goldarb/strategies/__init__.py` و در صورت نیاز `src/goldarb/__init__.py` export کن. تا وقتی داخل رجیستری ثبت نشده، `strategy.name` آن را نمی‌سازد.
 
 استراتژی‌های آماده:
 
@@ -273,9 +278,11 @@ data:
 
 runtime:
   mode: offline_backtest
+  broker: ""
   initial_cash: "1000000000"
   allow_short: false
   database: ":memory:"
+  state_path: ""
 
 session:
   timezone: Asia/Tehran
@@ -323,12 +330,41 @@ latency:
 | `live_paper_local` | داده زنده + matching در SDK |
 | `live_paper_remote` | داده زنده + matching روی سرور |
 
+کارگزار کاغذی از همین بلوک می‌آید، نه از اسکریپت `submit_buy`.
+
+| فیلد | معنی |
+| --- | --- |
+| `broker` | `""` (پیش‌فرض)، `agah`، یا `mofid`. فقط preset کاغذی است: `fee_rate` و `allow_short`، به‌اضافهٔ `code` و `display_name` روی خود preset. `agah` حمل‌ونقل نیست. موتور و `OrderGateway` از `mode` می‌آیند. |
+| `allow_short` | اگر در فایل باشد، همان مقدار حساب paper است. اگر نباشد و `broker` برابر `agah` یا `mofid` باشد، از preset می‌آید (هر دو `false`). |
+| `state_path` | مسیر JSON پنجرهٔ پریمیوم. `StrategyRunner` قبل از `on_start` آن را لود می‌کند و بعد از اجرا ذخیره می‌کند. |
+| `reset_history` | اگر `true` باشد، `on_start` پنجره را پاک می‌کند. |
+
+`fee` اگر در کانفیگ باشد همان کارمزد است. اگر نباشد و `broker` برابر `agah` یا `mofid` باشد، `fee_rate` از preset است (`0.0005`). `get_broker("agah")` در مسیر Strategy فقط همین preset را می‌خواند.
+
+حمل‌ونقل سفارش `OrderGateway` است و فقط `StrategyRunner` آن را از روی `mode` می‌سازد:
+
+| `mode` | درگاه |
+| --- | --- |
+| `backtest`، `offline_backtest`، `live_paper_local` | آداپتور `LocalPaperBroker` |
+| `live_paper_remote` | آداپتور `RemoteSimulator` (`feed()` ریموت `False` می‌ماند) |
+
+`create_account` و `equity_history` روی موتور paper می‌مانند، نه روی درگاه.
+
+`examples/simulate_local.py`، `examples/simulate_remote.py`، و `examples/simulate_agah_broker.py` کاغذ مستقیم هستند، نه مسیر Strategy. سفارش را با `submit_buy` می‌فرستند.
+
+`run_premium_threshold` خارج از قرارداد `Strategy` است. به `StrategyContext` و `OrderGateway` وصل نیست.
+
+نمونهٔ مسیر Strategy، با یک کلاس ثبت‌شده در بک‌تست و `live_paper_local`: `examples/run_strategy_gateway.py`.
+
 سایر فیلدها:
 
 - `initial_cash`
-- `allow_short`
 - `database`: `:memory:` یا مسیر SQLite
 - `account_id`: اگر بخواهی حساب موجود را ادامه بدهی
+
+`BubbleRankStrategy` و `PairZScoreStrategy` در state فقط پنجرهٔ پریمیوم (`_premiums`) و در صورت نیاز برچسب جفت را نگه می‌دارند. `on_start` با state لودشده این پنجره را پاک نمی‌کند. `_current_pair` در `on_start` خالی می‌شود، چون پوزیشن مال حساب است. `reset_history()` همچنان پنجره را پاک می‌کند.
+
+`month_backtest` و `iran_session_live` همان `StrategyRunner` را صدا می‌زنند. پیش‌فرض `allow_short` دیگر `true` پنهان نیست؛ برای جفت باید `allow_short=True` را صریح بگذاری.
 
 ### مدل‌های اجرا
 
@@ -376,11 +412,12 @@ print(result.metrics.n_orders, result.metrics.n_trades, result.portfolio.equity)
 `StrategyRunner` بر اساس کانفیگ این‌ها را می‌سازد:
 
 - DataProvider
-- Engine
-- Broker
+- Engine (`LocalPaperBroker` یا `RemoteSimulator` از روی `runtime.mode`)
+- `OrderGateway` روی همان موتور؛ Strategy سفارش را از این درگاه می‌فرستد
+- کارمزد و `allow_short` حساب paper؛ اگر `runtime.broker` برابر `agah` یا `mofid` باشد و خودت آن‌ها را ست نکرده باشی، از preset کاغذی
 - Fee / Slippage / Latency
 
-تو فقط Strategy را می‌سازی.
+تو فقط Strategy را می‌سازی. preset کارگزار به‌جای broker موتور تزریق نمی‌شود.
 
 خواندن نتیجه:
 
@@ -459,7 +496,9 @@ runtime:
   mode: live_paper_local
 ```
 
-`live_paper_remote` سفارش را به شبیه‌ساز سرور می‌فرستد. سفارش واقعی به بازار ارسال نمی‌شود.
+`live_paper_remote` سفارش را از همان `OrderGateway` به شبیه‌ساز سرور می‌فرستد. `feed()` محلی اجرا نمی‌شود. سفارش واقعی به بازار ارسال نمی‌شود.
+
+همان Strategy را بدون ویرایش `on_market_data` بین `backtest` و `live_paper_local` عوض کن. هر دو از آداپتور محلی درگاه رد می‌شوند. اسکریپت `examples/run_strategy_gateway.py` همین کار را می‌کند.
 
 ---
 
@@ -468,8 +507,11 @@ runtime:
 - نصب `goldarb-lab[yaml]` از PyPI به‌جای نصب editable از همین ریپو
 - استفاده از Python 3.10؛ پروژه `>=3.11` می‌خواهد
 - گذاشتن توکن داخل YAML
-- انتظار اینکه `strategy.name` کلاس را خودکار بسازد
+- انتظار اینکه `strategy.name` یک کلاس ثبت‌نشده را بسازد؛ فقط نام‌های `STRATEGY_REGISTRY` ساخته می‌شوند
 - زدن HTTP داخل Strategy
+- عوض کردن `runtime.broker` به `agah` به امید سفارش واقعی؛ آن مقدار فقط preset کاغذی است
+- حساب کردن `examples/simulate_local.py`، `simulate_remote.py`، یا `simulate_agah_broker.py` به‌عنوان مسیر Strategy؛ آن‌ها paper مستقیم‌اند
+- وصل کردن `run_premium_threshold` به Strategy؛ آن موتور خارج از این قرارداد است
 - اجرای کل آرشیو ۱۴روزه با `fill_session: true` برای تست اول
 - فراموش کردن `allow_short: true` برای استراتژی جفت
 - آرشیو بدون `manifest.json` با `offline_backtest`؛ برای JSONL خام `provider: jsonl` بگذار و `symbols` را صریح بنویس

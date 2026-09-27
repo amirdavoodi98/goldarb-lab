@@ -16,6 +16,7 @@ from ..execution import (
     PercentFee,
     SlippageModel,
 )
+from .brokers import Broker, resolve_broker, terms_for_fill
 from .engine import ZERO
 from .market_book import MarketBook
 from .matching import MatchingEngine, QuoteMatching
@@ -60,6 +61,7 @@ class LocalPaperBroker:
     def __init__(
         self,
         path: str | Path,
+        broker: Broker | str | None = None,
         *,
         matching: MatchingEngine | None = None,
         fee: FeeModel | None = None,
@@ -67,6 +69,7 @@ class LocalPaperBroker:
         latency: LatencyModel | None = None,
     ) -> None:
         self._repo = SQLitePersistence(path)
+        self.broker: Broker | None = None
         self.orders = OrderManager()
         self.book = MarketBook()
         self.portfolio_service = PortfolioService()
@@ -86,6 +89,17 @@ class LocalPaperBroker:
         self._last_timestamp = (
             None if latest is None else datetime.fromisoformat(latest["timestamp"])
         )
+        if broker is not None:
+            self.bind(broker)
+
+    def bind(self, broker: Broker | str) -> Broker:
+        """Use this broker as the destination for accounts created afterwards."""
+        resolved = resolve_broker(broker)
+        if resolved is None:
+            raise ValueError("unknown broker: ")
+        self.broker = resolved
+        resolved.attach(self)
+        return resolved
 
     def configure_execution(
         self,
@@ -148,11 +162,26 @@ class LocalPaperBroker:
         initial_cash: Decimal | float | str,
         label: str = "",
         fee_rate: Decimal | float | str | None = None,
-        allow_short: bool = False,
+        allow_short: bool | None = None,
         account_id: str | None = None,
+        broker: Broker | str | None = None,
     ) -> Account:
         cash = decimal_value(initial_cash)
-        fee = self.fee.rate() if fee_rate is None else decimal_value(fee_rate)
+        chosen = resolve_broker(broker)
+        if chosen is None:
+            chosen = self.broker
+        if fee_rate is None and chosen is not None:
+            fee = chosen.fee_rate
+        elif fee_rate is None:
+            fee = self.fee.rate()
+        else:
+            fee = decimal_value(fee_rate)
+        short = (
+            chosen.allow_short
+            if chosen is not None and allow_short is None
+            else bool(allow_short)
+        )
+        broker_code = chosen.code if chosen is not None else ""
         if cash <= ZERO:
             raise ValueError("initial_cash must be positive")
         if fee < ZERO or fee >= Decimal(1):
@@ -164,8 +193,8 @@ class LocalPaperBroker:
                 """
                 INSERT INTO accounts(
                     id, label, status, initial_cash, cash, fee_rate,
-                    allow_short, fees_paid, created_at, updated_at
-                ) VALUES (?, ?, 'ACTIVE', ?, ?, ?, ?, '0', ?, ?)
+                    allow_short, broker_code, fees_paid, created_at, updated_at
+                ) VALUES (?, ?, 'ACTIVE', ?, ?, ?, ?, ?, '0', ?, ?)
                 """,
                 (
                     identifier,
@@ -173,7 +202,8 @@ class LocalPaperBroker:
                     str(cash),
                     str(cash),
                     str(fee),
-                    int(allow_short),
+                    int(short),
+                    broker_code,
                     stamp,
                     stamp,
                 ),
@@ -199,8 +229,13 @@ class LocalPaperBroker:
         limit_price: Decimal | float | str | None = None,
         client_order_id: str | None = None,
         time_in_force: TimeInForce | str = TimeInForce.DAY,
+        broker: Broker | str | None = None,
     ) -> Order:
-        self.get_account(account_id)
+        account = self.get_account(account_id)
+        explicit_broker = resolve_broker(broker)
+        destination = (
+            explicit_broker.code if explicit_broker is not None else account.broker
+        )
         if client_order_id:
             existing = self.orders.get_by_client(account_id, client_order_id)
             if existing is not None:
@@ -220,6 +255,7 @@ class LocalPaperBroker:
             time_in_force=time_in_force,
             submitted_at=stamp,
             active_at=active_at.isoformat(),
+            broker=destination,
         )
 
         with self._repo.transaction() as db:
@@ -411,15 +447,21 @@ class LocalPaperBroker:
                     available = max(ZERO, available - consumed)
                 depth[key] = available
 
+            fee_rate, allow_short = terms_for_fill(
+                account_fee_rate=account.fee_rate,
+                account_allow_short=account.allow_short,
+                account_broker=account.broker,
+                order_broker=order.broker,
+            )
             result = self.pipeline.run(
                 order,
                 quote=quote,
                 available_depth=depth[key],
                 ledger=ledger,
-                allow_short=account.allow_short,
+                allow_short=allow_short,
                 market_event_id=event_id,
                 market_timestamp=timestamp,
-                fee_rate=account.fee_rate,
+                fee_rate=fee_rate,
             )
             if result.fills:
                 pipe = result.fills[0]
