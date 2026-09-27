@@ -1,4 +1,8 @@
-"""Submit a paper order to the main server from user-owned strategy code."""
+"""Direct paper, not the Strategy path.
+
+Submit a paper order to the main server from user-owned code.
+Orders go through ``submit_buy``, not ``OrderGateway``.
+"""
 
 from goldarb import LabClient
 from goldarb.simulation import get_broker
