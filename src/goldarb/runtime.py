@@ -30,6 +30,13 @@ from .execution import (
     ServerSideExecution,
     SlippageModel,
 )
+from .execution_policy import (
+    REMOTE_POLICY_ERROR,
+    ExecutionPolicy,
+    NoOpExecutionPolicy,
+    OffsetLimitPolicy,
+    policy_is_noop,
+)
 from .session import grain_step
 from .simulation import RemoteSimulator
 from .simulation.brokers import get_broker
@@ -70,6 +77,18 @@ LATENCY_MODELS: dict[str, LatencyFactory] = {
     "fixedlatency": lambda p: FixedLatency(int(p.get("milliseconds", 0))),
 }
 
+
+def _noop_execution_policy(params: dict[str, Any]) -> NoOpExecutionPolicy:
+    if params:
+        raise ValueError("NoOp execution policy does not take parameters")
+    return NoOpExecutionPolicy()
+
+
+EXECUTION_POLICIES: dict[str, Callable[[dict[str, Any]], ExecutionPolicy]] = {
+    "noop": _noop_execution_policy,
+    "offsetlimit": lambda p: OffsetLimitPolicy.from_params(p),
+}
+
 STRATEGY_REGISTRY: dict[str, StrategyFactory] = {
     "price_momentum": lambda p: PriceMomentumStrategy(**p),
     "pricemomentum": lambda p: PriceMomentumStrategy(**p),
@@ -107,6 +126,10 @@ def build_slippage(config: ModelConfig) -> SlippageModel:
 
 def build_latency(config: ModelConfig) -> LatencyModel:
     return _model(config, LATENCY_MODELS)
+
+
+def build_execution_policy(config: ModelConfig) -> ExecutionPolicy:
+    return _model(config, EXECUTION_POLICIES)
 
 
 def build_strategy(
@@ -394,8 +417,18 @@ class StrategyRunner:
 
         return None, self._execution or LocalFeedExecution()
 
+    def _reject_remote_policy(self, policy: ExecutionPolicy) -> None:
+        """Remote paper matches on the server, which does not share this policy."""
+        remote = self.config.runtime.mode == "live_paper_remote" or isinstance(
+            self._broker, RemoteSimulator
+        )
+        if remote and not policy_is_noop(policy):
+            raise ValueError(REMOTE_POLICY_ERROR)
+
     def _run(self, strategy: Strategy) -> RunResult:
         runtime = self.config.runtime
+        policy = build_execution_policy(self.config.execution_policy)
+        self._reject_remote_policy(policy)
         allow_short, fee_config = self._paper_terms()
         is_live = runtime.mode.startswith("live_")
         fee = build_fee(fee_config)
@@ -432,6 +465,8 @@ class StrategyRunner:
             slippage=slippage,
             latency=latency,
             execution=execution,
+            execution_policy=policy,
+            quote_fill=self.config.data.quote_fill,
         )
         self._save_strategy_state(strategy)
         return result
@@ -443,6 +478,7 @@ __all__ = [
     "SLIPPAGE_MODELS",
     "STRATEGY_REGISTRY",
     "StrategyRunner",
+    "build_execution_policy",
     "build_fee",
     "build_latency",
     "build_slippage",

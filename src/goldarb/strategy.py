@@ -12,6 +12,13 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Self
 
+from .execution_policy import (
+    REMOTE_POLICY_ERROR,
+    ExecutionPolicy,
+    NoOpExecutionPolicy,
+    RawOrder,
+    policy_is_noop,
+)
 from .simulation.models import (
     Fill,
     MarketSnapshot,
@@ -20,8 +27,10 @@ from .simulation.models import (
     OrderType,
     Portfolio,
     Position,
+    Quote,
     Side,
 )
+from .simulation.remote import RemoteSimulator
 
 _OPEN = (
     OrderStatus.OPEN,
@@ -56,10 +65,14 @@ class StrategyContext:
         account_id: str,
         *,
         config: Mapping[str, Any] | None = None,
+        execution_policy: ExecutionPolicy | None = None,
+        quote_fill: str = "last",
     ) -> None:
         self._broker = broker
         self.account_id = account_id
         self.config: dict[str, Any] = dict(config or {})
+        self._policy: ExecutionPolicy = execution_policy or NoOpExecutionPolicy()
+        self._quote_fill = quote_fill
         self._market: MarketSnapshot | None = None
         self._clock: datetime | None = None
         self._portfolio_cache: Portfolio | None = None
@@ -104,6 +117,15 @@ class StrategyContext:
     def fills(self) -> list[Fill]:
         return self._broker.list_fills(self.account_id)
 
+    def _quote_for(self, symbol: str) -> Quote | None:
+        market = self._market
+        if market is None:
+            return None
+        for quote in market.quotes:
+            if quote.symbol == symbol:
+                return quote
+        return None
+
     def submit_order(
         self,
         *,
@@ -114,15 +136,42 @@ class StrategyContext:
         limit_price: Decimal | float | str | None = None,
         client_order_id: str | None = None,
     ) -> Order:
-        order = self._broker.submit_order(
-            self.account_id,
-            symbol=symbol,
-            side=side,
-            quantity=quantity,
-            order_type=order_type,
-            limit_price=limit_price,
-            client_order_id=client_order_id,
-        )
+        # NoOp keeps the broker call unchanged, including remote paper.
+        # A real policy rewrites type, limit, size, and time_in_force first.
+        if policy_is_noop(self._policy):
+            order = self._broker.submit_order(
+                self.account_id,
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                order_type=order_type,
+                limit_price=limit_price,
+                client_order_id=client_order_id,
+            )
+        else:
+            if isinstance(self._broker, RemoteSimulator):
+                raise ValueError(REMOTE_POLICY_ERROR)
+            paper = self._policy.translate(
+                RawOrder(
+                    symbol=symbol,
+                    side=Side(str(side).upper()),
+                    quantity=Decimal(str(quantity)),
+                    order_type=OrderType(str(order_type).upper()),
+                    limit_price=None if limit_price is None else Decimal(str(limit_price)),
+                ),
+                quote=self._quote_for(symbol),
+                quote_fill=self._quote_fill,
+            )
+            order = self._broker.submit_order(
+                self.account_id,
+                symbol=symbol,
+                side=side,
+                quantity=paper.quantity,
+                order_type=paper.order_type,
+                limit_price=paper.limit_price,
+                client_order_id=client_order_id,
+                time_in_force=paper.time_in_force,
+            )
         self._portfolio_cache = None
         self.record(
             "order",
