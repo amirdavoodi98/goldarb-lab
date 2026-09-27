@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from .._http import LabHttp
+from .brokers import Broker, resolve_broker
 from .models import (
     Account,
     Fill,
@@ -38,16 +39,17 @@ class HttpRemoteVenue:
         label: str = "",
         fee_rate: Decimal | float | str = "0.0005",
         allow_short: bool = False,
+        broker: str | None = None,
     ) -> Account:
-        payload = self._http.post_json(
-            "/api/v1/simulation/accounts/",
-            {
-                "initial_cash": str(decimal_value(initial_cash)),
-                "label": label,
-                "fee_rate": str(decimal_value(fee_rate)),
-                "allow_short": allow_short,
-            },
-        )
+        body: dict[str, Any] = {
+            "initial_cash": str(decimal_value(initial_cash)),
+            "label": label,
+            "fee_rate": str(decimal_value(fee_rate)),
+            "allow_short": allow_short,
+        }
+        if broker:
+            body["broker"] = broker
+        payload = self._http.post_json("/api/v1/simulation/accounts/", body)
         return account_from_payload(payload)
 
     def get_account(self, account_id: str) -> Account:
@@ -74,6 +76,7 @@ class HttpRemoteVenue:
         order_type: OrderType | str = OrderType.MARKET,
         limit_price: Decimal | float | str | None = None,
         client_order_id: str | None = None,
+        broker: str | None = None,
     ) -> Order:
         body: dict[str, Any] = {
             "client_order_id": client_order_id or str(uuid.uuid4()),
@@ -82,6 +85,8 @@ class HttpRemoteVenue:
             "quantity": str(decimal_value(quantity)),
             "order_type": OrderType(str(order_type).upper()).value,
         }
+        if broker:
+            body["broker"] = broker
         if limit_price is not None:
             body["limit_price"] = str(decimal_value(limit_price))
         return order_from_payload(
@@ -126,7 +131,11 @@ class HttpRemoteVenue:
 class RemoteSimulator:
     """Broker facade for remote matching — never runs local MatchingEngine."""
 
-    def __init__(self, venue: RemoteVenue | LabHttp | Any) -> None:
+    def __init__(
+        self,
+        venue: RemoteVenue | LabHttp | Any,
+        broker: Broker | str | None = None,
+    ) -> None:
         if isinstance(venue, HttpRemoteVenue):
             self._venue: RemoteVenue = venue
         elif isinstance(venue, LabHttp) or (
@@ -135,6 +144,9 @@ class RemoteSimulator:
             self._venue = HttpRemoteVenue(venue)  # type: ignore[arg-type]
         else:
             self._venue = venue  # type: ignore[assignment]
+        self.broker: Broker | None = None
+        if broker is not None:
+            self.bind(broker)
         self.orders = OrderManager()
         self._seen_fill_ids: set[str] = set()
         self._seen_order_versions: set[tuple[str, str, str, str]] = set()
@@ -144,19 +156,47 @@ class RemoteSimulator:
     def venue(self) -> RemoteVenue:
         return self._venue
 
+    def bind(self, broker: Broker | str) -> Broker:
+        """Use this broker as the destination for accounts created afterwards."""
+        resolved = resolve_broker(broker)
+        if resolved is None:
+            raise ValueError("unknown broker: ")
+        self.broker = resolved
+        resolved.attach(self)
+        return resolved
+
     def create_account(
         self,
         *,
         initial_cash: Decimal | float | str,
         label: str = "",
-        fee_rate: Decimal | float | str = "0.0005",
-        allow_short: bool = False,
+        fee_rate: Decimal | float | str | None = None,
+        allow_short: bool | None = None,
+        broker: Broker | str | None = None,
     ) -> Account:
+        chosen = resolve_broker(broker)
+        if chosen is None:
+            chosen = self.broker
+        if fee_rate is None and chosen is not None:
+            fee = chosen.fee_rate
+        elif fee_rate is None:
+            fee = decimal_value("0.0005")
+        else:
+            fee = decimal_value(fee_rate)
+        short = (
+            chosen.allow_short
+            if chosen is not None and allow_short is None
+            else bool(allow_short)
+        )
+        extra: dict[str, Any] = {}
+        if chosen is not None:
+            extra["broker"] = chosen.code
         return self._venue.create_account(
             initial_cash=initial_cash,
             label=label,
-            fee_rate=fee_rate,
-            allow_short=allow_short,
+            fee_rate=fee,
+            allow_short=short,
+            **extra,
         )
 
     def get_account(self, account_id: str) -> Account:
@@ -184,7 +224,12 @@ class RemoteSimulator:
         order_type: OrderType | str = OrderType.MARKET,
         limit_price: Decimal | float | str | None = None,
         client_order_id: str | None = None,
+        broker: Broker | str | None = None,
     ) -> Order:
+        destination = resolve_broker(broker)
+        extra: dict[str, Any] = {}
+        if destination is not None:
+            extra["broker"] = destination.code
         remote = self._venue.submit_order(
             account_id,
             symbol=symbol,
@@ -193,6 +238,7 @@ class RemoteSimulator:
             order_type=order_type,
             limit_price=limit_price,
             client_order_id=client_order_id,
+            **extra,
         )
         self.ingest_order(remote)
         self.sync_fills(account_id)
@@ -314,6 +360,7 @@ def account_from_payload(item: dict[str, Any]) -> Account:
         fees_paid=decimal_value(item["fees_paid"]),
         created_at=str(item["created_at"]),
         updated_at=str(item["updated_at"]),
+        broker=str(item.get("broker") or item.get("broker_code") or ""),
     )
 
 
@@ -339,6 +386,7 @@ def order_from_payload(item: dict[str, Any]) -> Order:
         status=status,
         submitted_at=str(item["submitted_at"]),
         updated_at=str(item["updated_at"]),
+        broker=str(item.get("broker") or item.get("broker_code") or ""),
         time_in_force=TimeInForce(str(item.get("time_in_force") or "DAY")),
         rejection_code=item.get("rejection_code"),
         avg_fill_price=(

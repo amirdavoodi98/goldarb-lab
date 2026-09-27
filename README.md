@@ -59,6 +59,7 @@ export GOLDARB_TOKEN=your_token_here
 
 ```python
 from goldarb import LabClient
+from goldarb.simulation import get_broker
 
 with LabClient.from_env() as client:
     bars = client.fund.candles("طلا", start="2026-07-01", end="2026-07-03", grain="1m")
@@ -68,16 +69,18 @@ with LabClient.from_env() as client:
     xau = client.market.xau(start="2026-07-01", end="2026-07-03", grain="1m")
     ime = client.market.ime_cdc_stats("GoldBar", days=180)
 
+    broker = get_broker("mofid")
+    client.simulation.bind(broker)
     account = client.simulation.create_account(
         initial_cash="1000000000",
-        allow_short=True,
+        label="remote strategy",
     )
-    order = client.simulation.submit_order(
-        account.id,
+    order = broker.submit_buy(
+        account,
         symbol="طلا",
-        side="BUY",
         quantity="100",
     )
+    print(broker.get_cash(account))
 ```
 
 ## Paper simulation
@@ -182,13 +185,13 @@ not in configuration files.
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from goldarb.simulation import LocalSimulator, MarketSnapshot, Quote
+from goldarb.simulation import LocalSimulator, MarketSnapshot, Quote, get_broker
 
-with LocalSimulator("paper.sqlite3") as simulator:
+broker = get_broker("agah")
+with LocalSimulator("paper.sqlite3", broker=broker) as simulator:
     account = simulator.create_account(
         initial_cash="1000000000",
-        fee_rate="0.0005",
-        allow_short=True,
+        label="offline strategy",
     )
     simulator.feed(
         MarketSnapshot(
@@ -205,14 +208,16 @@ with LocalSimulator("paper.sqlite3") as simulator:
             ),
         )
     )
-    simulator.submit_order(
-        account.id,
-        symbol="طلا",
-        side="BUY",
-        quantity="100",
-    )
+    broker.submit_buy(account, symbol="طلا", quantity="100")
+    print(broker.list_holdings(account))
+    print(broker.get_cash(account))
     print(simulator.portfolio(account.id))
 ```
+
+V1 still paper-matches on the existing engine. Agah (`agah`) and Mofid (`mofid`)
+both use `fee_rate="0.0005"` and `allow_short=False`. Pass an explicit
+`fee_rate` to `create_account` when that account should differ. Accounts and
+orders persist `broker_code`.
 
 Full Persian guide: [`docs/local-simulator-fa.md`](docs/local-simulator-fa.md)
 
@@ -444,6 +449,7 @@ python examples/backtest_ma_band.py
 python examples/backtest_two_weeks_1s.py
 python examples/backtest_month_1s.py
 python examples/simulate_iran_session_1s.py
+python examples/simulate_agah_broker.py
 python examples/backtest_bubble_rank.py
 python examples/backtest_pair_zscore.py
 python examples/fetch_tala_1s.py

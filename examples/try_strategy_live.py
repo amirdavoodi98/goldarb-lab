@@ -31,7 +31,7 @@ from goldarb import LabClient, LiveSimulationEngine, PriceMomentumStrategy, RunC
 from goldarb.data import LabLiveFeed, LiveDataProvider
 from goldarb.execution import PercentFee
 from goldarb.session import TEHRAN, in_iran_session, is_iran_trading_day, session_bounds
-from goldarb.simulation import LocalSimulator
+from goldarb.simulation import LocalSimulator, get_broker
 from goldarb.universe import GOLD_FUND_SYMBOLS
 
 HERE = Path(__file__).resolve().parent
@@ -170,7 +170,7 @@ def main() -> int:
     )
     print(f"universe: {', '.join(symbols)}", flush=True)
 
-    with _client() as client, LocalSimulator(db_path) as simulator:
+    with _client() as client, LocalSimulator(db_path, broker=get_broker("agah")) as simulator:
         provider = LiveDataProvider(
             LabLiveFeed(client),
             symbols=symbols,
