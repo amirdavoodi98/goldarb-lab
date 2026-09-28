@@ -54,6 +54,7 @@ from .strategies import (
     MaBandStrategy,
     PairZScoreStrategy,
     PriceMomentumStrategy,
+    StreakStrategy,
 )
 from .strategy import Strategy
 
@@ -107,6 +108,7 @@ STRATEGY_REGISTRY: dict[str, StrategyFactory] = {
     "pairzscore": lambda p: PairZScoreStrategy(**p),
     "ma_band": lambda p: MaBandStrategy(**p),
     "maband": lambda p: MaBandStrategy(**p),
+    "streak": lambda p: StreakStrategy(**p),
 }
 
 
