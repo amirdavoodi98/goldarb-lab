@@ -24,6 +24,7 @@ from .strategies import (
     MaBandStrategy,
     PairZScoreStrategy,
     PriceMomentumStrategy,
+    StreakStrategy,
 )
 from .strategy import Strategy, StrategyContext
 from .universe import GOLD_FUND_SYMBOLS, GOLD_FUNDS
@@ -46,6 +47,7 @@ __all__ = [
     "PairZScoreStrategy",
     "PremiumThresholdResult",
     "PriceMomentumStrategy",
+    "StreakStrategy",
     "ParquetDatasetStore",
     "RunConfig",
     "RunResult",

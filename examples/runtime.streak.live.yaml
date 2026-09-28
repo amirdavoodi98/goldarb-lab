@@ -1,0 +1,44 @@
+# Live paper for StreakStrategy. Local matching only; no real orders.
+#
+#   .venv/bin/python examples/run.py examples/runtime.streak.live.yaml
+#
+# Needs GOLDARB_TOKEN or GOLDARB_USERNAME+GOLDARB_PASSWORD.
+# Remove session.max_polls to run until session.end.
+
+data:
+  provider: goldarb_api
+  source: https://goldarb.ir
+  symbols: ["طلا", "عیار"]
+  grain: 1s
+
+runtime:
+  mode: live_paper_local
+  initial_cash: "1000000000"
+  allow_short: false
+  database: ":memory:"
+  label: streak_live
+
+session:
+  timezone: Asia/Tehran
+  start: "12:00:00"
+  end: "18:00:00"
+  poll_seconds: 2.0
+  max_polls: 12
+
+strategy:
+  name: streak
+  params:
+    quantity: "1"
+    length: 2
+    min_step_pct: "0"
+
+fee:
+  name: PercentFee
+  params:
+    fee_rate: "0.0005"
+
+slippage:
+  name: NoSlippage
+
+latency:
+  name: NoLatency
