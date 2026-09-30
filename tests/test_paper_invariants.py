@@ -5,14 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from goldarb.engine import SimulationLoop
 from goldarb.execution import (
     FixedSlippage,
     LocalFeedExecution,
     NoLatency,
-    NoSlippage,
     PercentFee,
 )
-from goldarb.engine import SimulationLoop
 from goldarb.simulation import LocalPaperBroker, OrderStatus
 from goldarb.simulation.models import MarketSnapshot, OrderEventType, Quote
 from goldarb.strategy import Strategy, StrategyContext

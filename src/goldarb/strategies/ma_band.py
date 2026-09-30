@@ -15,9 +15,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
-from goldarb.data import snapshot_close
-from goldarb.simulation.models import Side, decimal_value
-from goldarb.strategy import Strategy, StrategyContext
+from ..data import snapshot_close
+from ..simulation.models import Side, decimal_value
+from ..strategy import Strategy, StrategyContext
 
 ONE = Decimal(1)
 ZERO = Decimal(0)

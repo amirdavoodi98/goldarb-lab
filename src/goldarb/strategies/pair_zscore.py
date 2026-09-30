@@ -14,15 +14,16 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from goldarb.data import snapshot_close
-from goldarb.signals.pair_spread import (
+from ..data import snapshot_close
+from ..signals.pair_spread import (
     PAIR_SPREAD_DEFAULT_WINDOW,
     PAIR_SPREAD_MIN_SAMPLES,
     PAIR_SPREAD_Z_THRESHOLD,
     compute_pair_spread_stats,
 )
-from goldarb.simulation.models import Fill, Side, decimal_value
-from goldarb.strategies.pairs import (
+from ..simulation.models import Fill, Side, decimal_value
+from ..strategy import Strategy, StrategyContext
+from .pairs import (
     consume_pair_fill,
     current_pair_intent,
     dump_premium_points,
@@ -34,7 +35,6 @@ from goldarb.strategies.pairs import (
     pair_intent_pending,
     snapshot_premium,
 )
-from goldarb.strategy import Strategy, StrategyContext
 
 BACKTEST_DEFAULT_CAPITAL_PER_SIDE = Decimal("100000000")
 

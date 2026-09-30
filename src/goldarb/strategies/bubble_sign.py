@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from goldarb.simulation.models import Side, decimal_value
-from goldarb.strategy import Strategy, StrategyContext
+from ..simulation.models import Side, decimal_value
+from ..strategy import Strategy, StrategyContext
 
 ZERO = Decimal(0)
 

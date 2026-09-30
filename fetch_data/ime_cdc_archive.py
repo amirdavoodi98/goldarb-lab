@@ -79,7 +79,9 @@ def capture_contract(client, contract: str) -> int:
     else:
         raise ValueError(f"Unsupported contract: {contract}")
 
-    contract_code = payload.get("contract_code", contract) if isinstance(payload, dict) else contract
+    contract_code = (
+        payload.get("contract_code", contract) if isinstance(payload, dict) else contract
+    )
     rows = payload.get("stats") or [] if isinstance(payload, dict) else []
 
     captured_at = datetime.now(timezone.utc).isoformat()

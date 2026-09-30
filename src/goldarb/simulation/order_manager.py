@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, replace
-from datetime import datetime
 from decimal import Decimal
 
 from .engine import ZERO
@@ -186,7 +185,12 @@ class OrderManager:
 
     def request_cancel(self, order_id: str, *, at: str) -> Order:
         order = self.get(order_id)
-        if order.status in {OrderStatus.CANCELLED, OrderStatus.FILLED, OrderStatus.REJECTED, OrderStatus.EXPIRED}:
+        if order.status in {
+            OrderStatus.CANCELLED,
+            OrderStatus.FILLED,
+            OrderStatus.REJECTED,
+            OrderStatus.EXPIRED,
+        }:
             return order
         if order.status == OrderStatus.CREATED:
             updated = self._transition(
@@ -226,19 +230,21 @@ class OrderManager:
         self._record(order_id, OrderEventType.EXPIRED, at, {})
         return updated
 
-    def apply_fill(self, order_id: str, fill: Fill, *, terminal_without_fill: bool = False) -> Order:
+    def apply_fill(self, order_id: str, fill: Fill) -> Order:
         order = self.get(order_id)
-        if order.status not in WORKING_STATUSES and order.status != OrderStatus.ACCEPTED:
-            if order.status == OrderStatus.CANCEL_PENDING:
-                pass
-            elif order.status not in WORKING_STATUSES:
-                raise DomainError(f"cannot fill order in status {order.status.value}")
+        if order.status not in WORKING_STATUSES:
+            raise DomainError(f"cannot fill order in status {order.status.value}")
 
         new_filled = order.filled_quantity + fill.quantity
         if new_filled > order.quantity:
             raise DomainError("fill would exceed order quantity")
 
-        avg = _avg_fill_price(order.avg_fill_price, order.filled_quantity, fill.price, fill.quantity)
+        avg = _avg_fill_price(
+            order.avg_fill_price,
+            order.filled_quantity,
+            fill.price,
+            fill.quantity,
+        )
         if new_filled >= order.quantity:
             status = OrderStatus.FILLED
             closed_at = fill.filled_at
@@ -271,7 +277,6 @@ class OrderManager:
                 "fee": str(fill.fee),
             },
         )
-        del terminal_without_fill
         return updated
 
     def close_unfilled(

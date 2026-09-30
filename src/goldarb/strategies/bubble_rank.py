@@ -12,14 +12,15 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from goldarb.signals.bubble_rank import (
+from ..signals.bubble_rank import (
     BUBBLE_RANK_MIN_GAP,
     BUBBLE_RANK_MIN_SAMPLES,
     BUBBLE_RANK_WINDOW_DAYS,
     compute_rankings,
 )
-from goldarb.simulation.models import Fill, Side, decimal_value
-from goldarb.strategies.pairs import (
+from ..simulation.models import Fill, Side, decimal_value
+from ..strategy import Strategy, StrategyContext
+from .pairs import (
     append_premiums,
     consume_pair_fill,
     current_pair_intent,
@@ -33,7 +34,6 @@ from goldarb.strategies.pairs import (
     premiums_on_snapshot,
     window_values,
 )
-from goldarb.strategy import Strategy, StrategyContext
 
 BACKTEST_DEFAULT_CAPITAL_PER_SIDE = Decimal("100000000")
 

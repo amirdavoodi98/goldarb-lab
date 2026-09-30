@@ -17,6 +17,7 @@ import pprint
 import sys
 
 from fetch_data.gold_funds import GOLD_FUNDS
+
 try:
     from .goldarb_client import close_client, get_client
     from .goldarb_data_bundle import get_fund_holdings, get_fund_issued_units

@@ -326,7 +326,11 @@ class InMemoryRemoteVenue:
             if qty <= ZERO:
                 continue
             # Server applies slippage into execution price once.
-            price = raw + self.server_slippage if order.side == Side.BUY else raw - self.server_slippage
+            price = (
+                raw + self.server_slippage
+                if order.side == Side.BUY
+                else raw - self.server_slippage
+            )
             fee_amt = fee_for(qty, price, account.fee_rate)
             fill = Fill(
                 id=str(uuid.uuid4()),

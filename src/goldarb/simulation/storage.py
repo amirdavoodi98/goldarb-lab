@@ -13,7 +13,6 @@ from .models import (
     Fill,
     Order,
     OrderEvent,
-    OrderEventType,
     OrderStatus,
     OrderType,
     Side,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -17,10 +17,10 @@ from goldarb.simulation import (
     Quote,
 )
 from goldarb.simulation.matching import QuoteMatching
-from goldarb.simulation.models import Order, OrderType, ProposedFill, Side
+from goldarb.simulation.models import Order, OrderType, Side
 from goldarb.simulation.order_manager import OrderManager
 from goldarb.simulation.pipeline import ExecutionPipeline
-from goldarb.simulation.portfolio_service import LedgerState, PortfolioService
+from goldarb.simulation.portfolio_service import LedgerState
 
 
 def snap(
@@ -141,7 +141,11 @@ def test_cancel_and_cancel_race_late_fill(tmp_path):
         order = sim.get_order(account.id, order.id)
         assert order.filled_quantity == Decimal("2.00000000")
         # Remainder cancelled on same feed after match attempt
-        assert order.status in {OrderStatus.CANCELLED, OrderStatus.PARTIALLY_FILLED, OrderStatus.CANCEL_PENDING}
+        assert order.status in {
+            OrderStatus.CANCELLED,
+            OrderStatus.PARTIALLY_FILLED,
+            OrderStatus.CANCEL_PENDING,
+        }
         if order.status == OrderStatus.CANCEL_PENDING:
             sim.feed(snap("t3", minute=2, ask="110", ask_size="1"))
             order = sim.get_order(account.id, order.id)
@@ -273,7 +277,13 @@ def test_pipeline_unit_match_slip_fee():
         submitted_at="t",
         updated_at="t",
     )
-    quote = Quote(symbol="طلا", ask=Decimal("100"), bid=Decimal("99"), last=Decimal("100"), ask_size=Decimal("5"))
+    quote = Quote(
+        symbol="طلا",
+        ask=Decimal("100"),
+        bid=Decimal("99"),
+        last=Decimal("100"),
+        ask_size=Decimal("5"),
+    )
     result = pipeline.run(
         order,
         quote=quote,

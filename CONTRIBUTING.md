@@ -1,14 +1,13 @@
 # Contributing
 
-This repository is the **Strategy Lab SDK only** — a thin HTTP client for
-historical fund and metal bars from the Gold Arbitrage platform API.
+This repository is the Gold Arbitrage strategy lab: the `goldarb` package
+(market-data client, paper broker, and Strategy engines) and the `fetch_data`
+collectors.
 
 ## Do not add
 
-- Scrapers, Celery workers, or data ingestion pipelines
-- Django / backend / frontend code
+- Scrapers, Celery workers, or Django / backend / frontend code
 - Direct database credentials or Timescale access
-- Live order placement or trading execution
 - Hardcoded tokens, passwords, or production URLs
 
 Platform API changes belong in
@@ -21,7 +20,7 @@ endpoints change.
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[pandas,dev]"
+pip install -e ".[pandas,yaml,dev]"
 pytest
 ```
 

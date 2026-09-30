@@ -42,7 +42,7 @@ IME_CONTRACT_SPECS: dict[str, dict[str, Any]] = {
         "contract_multiplier": 1,          # price already quoted per certificate (0.1g unit)
         "coin_type": None,                 # not applicable — this is a bullion cert, not a coin
         "currency": "IRR",                 # NOT independently re-verified against SDK output —
-                                            # cross-check against a live price before relying on this
+                                            # cross-check a live price before relying on this
         "price_unit": "per_certificate",   # i.e. per 0.1g, not per gram or per kg
         "valid_from": "1401-12",           # Esfand 1401 ≈ Feb/Mar 2023 — month precision only
         "valid_from_gregorian_approx": "2023-03",
@@ -62,7 +62,7 @@ IME_CONTRACT_SPECS: dict[str, dict[str, Any]] = {
         "purity": 900,                     # 22 karat
         "contract_multiplier": 1,          # 1 certificate = 1 coin, no fractional multiplier
         "coin_type": "بهار آزادی طرح جدید",
-        "currency": "IRR",                 # NOT independently re-verified — cross-check before relying
+        "currency": "IRR",                 # cross-check a live quote before relying on the unit
         "price_unit": "per_certificate",   # i.e. per full coin
         "valid_from": "1403-02-17",        # 17 Ordibehesht 1403
         "valid_from_gregorian_approx": "2024-05-06",  # approximate — see module docstring caveat
@@ -81,7 +81,7 @@ IME_CONTRACT_SPECS: dict[str, dict[str, Any]] = {
         "purity": 999.9,
         "contract_multiplier": 1,
         "coin_type": None,
-        "currency": "IRR",                 # NOT independently re-verified — cross-check before relying
+        "currency": "IRR",                 # cross-check a live quote before relying on the unit
         "price_unit": "per_certificate",   # i.e. per gram
         "valid_from": "1403-09",           # Azar 1403 ≈ Nov/Dec 2024 — month precision only
         "valid_from_gregorian_approx": "2024-11",

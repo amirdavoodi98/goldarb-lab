@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
-from ..execution import FeeModel, LatencyModel, PercentFee, SlippageModel
-from .engine import ZERO
+from ..execution import FeeModel, LatencyModel, SlippageModel
+from .engine import ZERO, fee_for
 from .matching import MatchingEngine
-from .models import Fill, MatchResult, Order, Quote, Side
+from .models import Fill, MatchResult, Order, Quote
 from .portfolio_service import FillApplication, LedgerState, PortfolioService
 
 
@@ -89,8 +89,6 @@ class ExecutionPipeline:
             side=order.side,
             quote=quote,
         )
-        from .engine import fee_for
-
         fee_amount = fee_for(qty, price, rate)
         application = self.portfolio.apply_fill(
             ledger,

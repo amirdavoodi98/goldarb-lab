@@ -1,123 +1,35 @@
 # goldarb-lab
 
-## Root
-- `README.md`
-- `STRUCTURE.md`
-- `CONTRIBUTING.md`
-- `LICENSE`
-- `pyproject.toml`
-- `requirements.txt`
-- `goldarb_client.py`
-- `goldarb_data_bundle.py`
-- `goldarb_lab.py`
-- `test_sdk.py`
-- `all_funds_portfolio.json`
-- `ime_cdc_history.csv`
-- `ime_cdc_history.jsonl`
+## Package (`src/goldarb`)
 
-## Package
-- `src/goldarb/__init__.py`
-- `src/goldarb/_http.py`
-- `src/goldarb/_util.py`
-- `src/goldarb/client.py`
-- `src/goldarb/fund.py`
-- `src/goldarb/market.py`
-- `src/goldarb/premium_threshold.py`
-- `src/goldarb/strategy.py`
-- `src/goldarb/data.py`
-- `src/goldarb/execution.py`
-- `src/goldarb/engine.py`
-- `src/goldarb/pipelines.py`
-- `src/goldarb/session.py`
-- `src/goldarb/universe.py`
-- `src/goldarb/signals/`
-- `src/goldarb/strategies/ma_band.py`
-- `src/goldarb/strategies/bubble_rank.py`
-- `src/goldarb/strategies/pair_zscore.py`
-- `src/goldarb/simulation/`
+Market-data client, Strategy contract, and paper simulation.
 
-## fetch_data
-- `fetch_data/README.md`
-- `fetch_data/__init__.py`
-- `fetch_data/check_session_start_gap.py`
-- `fetch_data/daily_archive.py`
-- `fetch_data/fetch_all_funds_portfolio.py`
-- `fetch_data/fetch_fund_holding.py`
-- `fetch_data/fetch_fund_issue_unit.py`
-- `fetch_data/fetch_gold_coin_live.py`
-- `fetch_data/fetch_goldbar_live.py`
-- `fetch_data/fetch_ime_cdc_history.py`
-- `fetch_data/fetch_usdt_live.py`
-- `fetch_data/fetch_xau_xag_live.py`
-- `fetch_data/gold_funds.py`
-- `fetch_data/goldarb_client.py`
-- `fetch_data/goldarb_data_bundle.py`
-- `fetch_data/inspect_ime_cdc_stats.py`
-- `fetch_data/merge_fund_datasets.py`
-- `fetch_data/minute_bar_archive.py`
-- `fetch_data/run_all.py`
+- `client.py`, `fund.py`, `market.py`, `_http.py` — HTTP client for the platform API
+- `data.py`, `sources.py`, `archive.py`, `session.py` — historical and live market feeds
+- `strategy.py`, `strategies/`, `signals/` — Strategy contract, built-in strategies, signal math
+- `engine.py`, `runtime.py`, `pipelines.py`, `config.py` — backtest / live loop and YAML runner
+- `execution.py`, `execution_policy.py`, `gateway.py` — fee, slippage, latency, order policy, and the order gateway
+- `simulation/` — local paper broker, remote paper client, broker wrappers, orders, matching, portfolio
+- `premium_threshold.py`, `universe.py` — premium scan helper and the gold-fund universe
 
-## Examples
-- `examples/backtest_premium_threshold.py`
-- `examples/backtest_ma_band.py`
-- `examples/backtest_month_1s.py`
-- `examples/simulate_iran_session_1s.py`
-- `examples/backtest_bubble_rank.py`
-- `examples/backtest_pair_zscore.py`
-- `examples/fetch_issued_units.py`
-- `examples/fetch_tala_1m.py`
-- `examples/fetch_usdt.py`
-- `examples/fetch_xau.py`
-- `examples/strategy_data_bundle.py`
-- `examples/simulate_local.py`
-- `examples/simulate_remote.py`
+`BacktestEngine` and `LiveSimulationEngine` share one loop. Snapshots are not
+rewritten there. `LocalPaperBroker` applies slippage and submit latency on the
+order path.
 
-## Tests
-- `tests/test_chunking.py`
-- `tests/test_http_mock.py`
-- `tests/test_ime_cdc.py`
-- `tests/test_premium_threshold.py`
-- `tests/test_usdt_units.py`
-- `tests/test_local_simulation.py`
-- `tests/test_remote_simulation.py`
-- `tests/test_strategy_engine.py`
-- `tests/test_execution_models.py`
-- `tests/test_bubble_rank.py`
-- `tests/test_pair_zscore.py`
-- `tests/test_data_1s.py`
-- `tests/test_pipelines_1s.py`
-- `tests/ma_band/`
+## Collectors (`fetch_data`)
 
-## Docs
-- `docs/sdk-usage-fa.md`
-- `docs/local-simulator-fa.md`
-- `docs/srs-sdk-v0.1.md`
+Scripts that pull history into `archive/` and build `merged_output/`.
+They are not imported by the SDK.
 
-## Data / Archives
-- `archive/fund_bars_1m/آتش.jsonl`
-- `archive/fund_bars_1m/طلا.jsonl`
-- `archive/fund_bars_1m/عیار.jsonl`
-- `archive/fund_bars_1m/مثقال.jsonl`
-- `archive/fund_bars_1m/کهربا.jsonl`
-- `archive/holdings_history.jsonl`
-- `archive/issued_units_history.jsonl`
-- `data/composition_آتش.csv`
-- `data/composition_طلا.csv`
-- `data/composition_عیار.csv`
-- `data/composition_مثقال.csv`
-- `data/composition_کهربا.csv`
-- `data/nav_history_آتش.csv`
-- `data/nav_history_طلا.csv`
-- `data/nav_history_عیار.csv`
-- `data/nav_history_مثقال.csv`
-- `data/nav_history_کهربا.csv`
-- `data/silver_daily_history.csv`
-- `data/usdttmn_1m_3y_final.csv`
+## Examples, tests, docs
 
-## Output / Processed
-- `merged_output/آتش_merged.csv`
-- `merged_output/طلا_merged.csv`
-- `merged_output/عیار_merged.csv`
-- `merged_output/مثقال_merged.csv`
-- `merged_output/کهربا_merged.csv`
+- `examples/` — runnable backtests, paper sessions, and small fetch scripts
+- `tests/` — offline unit tests (`pytest`)
+- `docs/` — SDK usage, simulator guide, strategy guide, and ADR 0001
 
+## Data checked into the repo
+
+- `archive/` — raw JSONL history and coverage reports
+- `data/` — local NAV, composition, and reference CSVs
+- `merged_output/` — analysis CSVs from `fetch_data/merge_fund_datasets.py`
+- `ime_cdc_history.csv` / `ime_cdc_history.jsonl` — one-shot IME export

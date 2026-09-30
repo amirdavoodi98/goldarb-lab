@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections import Counter, defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -299,7 +299,11 @@ def _collect_ime_daily(client, *, days: int) -> list[CoverageItem]:
                 seen_days.add(str(trade_date))
                 record = {
                     "captured_at": captured_at,
-                    "contract_code": payload.get("contract_code", contract) if isinstance(payload, dict) else contract,
+                    "contract_code": (
+                        payload.get("contract_code", contract)
+                        if isinstance(payload, dict)
+                        else contract
+                    ),
                     "status": "available",
                     **row,
                 }
@@ -346,7 +350,12 @@ def _summarize(report: list[CoverageItem]) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Collect missing data into append-only archives.")
-    parser.add_argument("--days", type=int, default=30, help="lookback window for bars and IME daily data")
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=30,
+        help="lookback window for bars and IME daily data",
+    )
     args = parser.parse_args()
 
     client = get_client()

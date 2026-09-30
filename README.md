@@ -103,8 +103,9 @@ How to write a Strategy, set YAML config, and run a backtest:
 
 To keep a Strategy environment-agnostic, prefer `BacktestEngine` /
 `LiveSimulationEngine` with a `DataProvider`. The same `Strategy` subclass runs
-on historical bars and live paper data; engines apply fee, slippage, and latency
-models before `LocalSimulator` matches orders.
+on historical bars and live paper data. The engines pass fee, slippage, and
+latency into `LocalPaperBroker`, which applies them on the order path
+(match, then slippage, then fee). The simulation loop does not rewrite snapshots.
 
 ```python
 from goldarb import BacktestEngine, MaBandStrategy, RunConfig
