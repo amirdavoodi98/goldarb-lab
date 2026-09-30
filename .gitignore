@@ -18,6 +18,9 @@ ENV/
 # Local paper-simulation databases (created by examples/tests)
 *.sqlite3
 
+# Collector and session logs
+*.log
+
 # Test / type / lint caches
 .pytest_cache/
 .ruff_cache/

@@ -35,7 +35,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from goldarb import LabClient
+from goldarb import LabClient  # noqa: E402  # src/ is inserted above for non-installed runs
 
 try:
     from dotenv import load_dotenv

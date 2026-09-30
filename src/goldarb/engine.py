@@ -1,8 +1,9 @@
 """Backtest and live-simulation engines sharing one event loop.
 
-The strategy never sees the data source or broker type. Both engines feed
-snapshots through unchanged. Slippage is ``SlippageModel.adjust_fill_price``
-on the order path, not ``apply_snapshot`` inside the loop.
+The strategy never sees the data source or broker type. Snapshots pass
+through unchanged. Fee, slippage, and submit latency are applied on the
+order path (``SlippageModel.adjust_fill_price`` via ``ExecutionPipeline``),
+not with ``apply_snapshot`` inside this loop.
 """
 
 from __future__ import annotations
@@ -10,7 +11,6 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from decimal import Decimal
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -390,7 +390,3 @@ class LiveSimulationEngine(SimulationEngine):
 
 def _iter_events(provider: DataProvider) -> Iterator[MarketSnapshot]:
     return provider.events()
-
-
-def memory_simulator(path: str | Path | None = None) -> LocalSimulator:
-    return LocalSimulator(path or ":memory:")

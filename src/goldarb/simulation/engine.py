@@ -1,23 +1,19 @@
-"""Deterministic order matching and position accounting."""
+"""Quantity rounding, fill fees, and position accounting.
+
+Quote matching lives in ``matching.QuoteMatching``. This module only
+supplies the shared numeric helpers those collaborators call.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal
 
-from .models import OrderType, Quote, Side
+from .models import Side
 
 ZERO = Decimal(0)
 QUANTITY_QUANTUM = Decimal("0.00000001")
 MONEY_QUANTUM = Decimal("0.000001")
-
-
-@dataclass(frozen=True)
-class MatchResult:
-    quantity: Decimal
-    price: Decimal | None
-    terminal: bool
-    rejection: str | None = None
 
 
 @dataclass(frozen=True)
@@ -31,64 +27,6 @@ def floor_quantity(value: Decimal) -> Decimal:
     if value <= ZERO:
         return ZERO
     return value.quantize(QUANTITY_QUANTUM, rounding=ROUND_DOWN)
-
-
-# Backward-compatible private alias.
-_floor_quantity = floor_quantity
-
-
-def match_order(
-    *,
-    side: Side,
-    order_type: OrderType,
-    remaining: Decimal,
-    limit_price: Decimal | None,
-    quote: Quote | None,
-    available_depth: Decimal | None,
-    cash: Decimal,
-    fee_rate: Decimal,
-    current_position: Decimal,
-    allow_short: bool,
-) -> MatchResult:
-    """Match one order against one quote without mutating persistence state."""
-    if remaining <= ZERO:
-        return MatchResult(ZERO, None, True)
-    if quote is None:
-        return MatchResult(ZERO, None, False)
-
-    price = quote.ask if side == Side.BUY else quote.bid
-    if price is None or price <= ZERO:
-        price = quote.last
-    if price is None or price <= ZERO:
-        return MatchResult(ZERO, None, order_type == OrderType.MARKET, "price_unavailable")
-
-    if order_type == OrderType.LIMIT:
-        if limit_price is None:
-            return MatchResult(ZERO, None, True, "limit_price_required")
-        crosses = price <= limit_price if side == Side.BUY else price >= limit_price
-        if not crosses:
-            return MatchResult(ZERO, price, False)
-
-    fillable = remaining
-    if available_depth is not None:
-        fillable = min(fillable, max(available_depth, ZERO))
-    if fillable <= ZERO:
-        return MatchResult(ZERO, price, order_type == OrderType.MARKET)
-
-    if side == Side.BUY:
-        unit_cost = price * (Decimal(1) + fee_rate)
-        affordable = _floor_quantity(cash / unit_cost) if unit_cost > ZERO else ZERO
-        fillable = min(fillable, affordable)
-        if fillable <= ZERO:
-            return MatchResult(ZERO, price, True, "insufficient_cash")
-    elif not allow_short:
-        fillable = min(fillable, max(current_position, ZERO))
-        if fillable <= ZERO:
-            return MatchResult(ZERO, price, True, "short_disabled")
-
-    quantity = _floor_quantity(fillable)
-    terminal = order_type == OrderType.MARKET or quantity >= remaining
-    return MatchResult(quantity, price, terminal)
 
 
 def apply_position_fill(

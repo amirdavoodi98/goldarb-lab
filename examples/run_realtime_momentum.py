@@ -22,8 +22,8 @@ from __future__ import annotations
 import argparse
 
 from goldarb import (
-    AppConfig,
     GOLD_FUND_SYMBOLS,
+    AppConfig,
     PriceMomentumStrategy,
     StrategyRunner,
 )

@@ -9,6 +9,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from pprint import pprint
 
+from .check_session_start_gap import CHECK_DATE
+from .check_session_start_gap import FUND_SYMBOLS as GAP_FUND_SYMBOLS
+from .daily_archive import FUND_SYMBOLS as DAILY_FUND_SYMBOLS
+from .daily_archive import HOLDINGS_LOG, UNITS_LOG
+from .fetch_all_funds_portfolio import fetch_all_portfolios
+from .fetch_ime_cdc_history import CONTRACTS as IME_HISTORY_CONTRACTS
+from .fetch_ime_cdc_history import FIELDS as IME_HISTORY_FIELDS
+from .fetch_ime_cdc_history import MAX_DAYS as IME_HISTORY_MAX_DAYS
 from .goldarb_client import close_client, get_client
 from .goldarb_data_bundle import (
     get_all_funds_holdings,
@@ -20,20 +28,13 @@ from .goldarb_data_bundle import (
     get_usdt_live,
     get_xau_xag_live,
 )
-from .daily_archive import FUND_SYMBOLS as DAILY_FUND_SYMBOLS
-from .daily_archive import HOLDINGS_LOG, UNITS_LOG
-from .fetch_all_funds_portfolio import fetch_all_portfolios
-from .fetch_ime_cdc_history import CONTRACTS as IME_HISTORY_CONTRACTS
-from .fetch_ime_cdc_history import FIELDS as IME_HISTORY_FIELDS
-from .fetch_ime_cdc_history import MAX_DAYS as IME_HISTORY_MAX_DAYS
 from .ime_cdc_archive import ARCHIVE_DIR as IME_ARCHIVE_DIR
 from .ime_cdc_archive import CONTRACTS as IME_ARCHIVE_CONTRACTS
 from .ime_cdc_archive import MAX_DAYS as IME_ARCHIVE_MAX_DAYS
+from .inspect_ime_cdc_stats import CONTRACTS as INSPECT_CONTRACTS
 from .minute_bar_archive import ARCHIVE_DIR as MINUTE_ARCHIVE_DIR
 from .minute_bar_archive import FUND_SYMBOLS as MINUTE_FUND_SYMBOLS
 from .minute_bar_archive import LOOKBACK_DAYS as MINUTE_LOOKBACK_DAYS
-from .check_session_start_gap import CHECK_DATE, FUND_SYMBOLS as GAP_FUND_SYMBOLS
-from .inspect_ime_cdc_stats import CONTRACTS as INSPECT_CONTRACTS
 
 
 def _run_step(name: str, func) -> object:
@@ -177,12 +178,18 @@ def _capture_daily_archive(client) -> None:
     for symbol in DAILY_FUND_SYMBOLS:
         try:
             holdings = get_fund_holdings(client, symbol)
-            _append_jsonl(HOLDINGS_LOG, {"captured_at": captured_at, "symbol": symbol, "payload": holdings})
+            _append_jsonl(
+                HOLDINGS_LOG,
+                {"captured_at": captured_at, "symbol": symbol, "payload": holdings},
+            )
         except Exception as exc:
             print(f"[warn] holdings capture failed for {symbol}: {exc}")
         try:
             units = get_fund_issued_units(client, symbol)
-            _append_jsonl(UNITS_LOG, {"captured_at": captured_at, "symbol": symbol, "payload": units})
+            _append_jsonl(
+                UNITS_LOG,
+                {"captured_at": captured_at, "symbol": symbol, "payload": units},
+            )
         except Exception as exc:
             print(f"[warn] issued_units capture failed for {symbol}: {exc}")
     print(f"Captured {len(DAILY_FUND_SYMBOLS)} funds at {captured_at}")
@@ -216,7 +223,8 @@ def _capture_minute_bar_archive(client) -> None:
                 bar_at = bar.get("bar_at")
                 if bar_at is None or bar_at in existing:
                     continue
-                f.write(json.dumps({"captured_at": captured_at, "symbol": symbol, **bar}, ensure_ascii=False) + "\n")
+                record = {"captured_at": captured_at, "symbol": symbol, **bar}
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
                 existing.add(bar_at)
                 new_count += 1
         print(f"{symbol}: +{new_count} new bars")

@@ -5,7 +5,9 @@ the 5 target funds: عیار، طلا، کهربا، مثقال، آتش.
 
 Sources merged per fund:
   - composition CSV   (تاریخ, پنج نماد برتر (%), سهام (%), اوراق (%), سایر (%), نقد (%), سپرده (%))
-  - nav_history CSV   (تاریخ, قیمت ابطال, قیمت صدور, قیمت آماری, ارزش خالص دارایی‌ها, تعداد واحدهای سرمایه‌گذاری شده)
+  - nav_history CSV
+    (تاریخ, قیمت ابطال, قیمت صدور, قیمت آماری,
+     ارزش خالص دارایی‌ها, تعداد واحدهای سرمایه‌گذاری شده)
   - IME contract daily history CSV(s) — SHARED across funds, not per-fund
     (DT, PersianDate, ContractCode, FirstPrice, MaxPrice, MinPrice, LastPrice,
      TradesVolume, TradesValue, OpenInterest, ..., LastSettlementPrice,
@@ -47,7 +49,7 @@ except ImportError:
     HAVE_JDATETIME = False
 
 from .goldarb_client import close_client, get_client
-from .goldarb_data_bundle import get_fund_holdings, get_fund_issued_units
+from .goldarb_data_bundle import get_fund_holdings
 
 # ---------------------------------------------------------------------
 # CONFIG — adjust these to match your actual file layout
@@ -57,9 +59,12 @@ FUND_SYMBOLS = ("عیار", "طلا", "کهربا", "مثقال", "آتش")
 
 DATA_DIR = Path("data")
 
-# Adjust these templates if your real filenames differ
-COMPOSITION_PATH = lambda symbol: DATA_DIR / f"composition_{symbol}.csv"
-NAV_HISTORY_PATH = lambda symbol: DATA_DIR / f"nav_history_{symbol}.csv"
+def composition_path(symbol: str) -> Path:
+    return DATA_DIR / f"composition_{symbol}.csv"
+
+
+def nav_history_path(symbol: str) -> Path:
+    return DATA_DIR / f"nav_history_{symbol}.csv"
 
 # Shared reference files — one row of contract history per date, not per-fund
 IME_CONTRACT_FILES = {
@@ -126,7 +131,7 @@ def _to_gregorian(date_str: str) -> str | None:
 # ---------------------------------------------------------------------
 
 def load_composition(symbol: str) -> pd.DataFrame:
-    path = COMPOSITION_PATH(symbol)
+    path = composition_path(symbol)
     if not path.exists():
         print(f"  [warn] composition file not found for {symbol}: {path}")
         return pd.DataFrame()
@@ -136,7 +141,7 @@ def load_composition(symbol: str) -> pd.DataFrame:
 
 
 def load_nav_history(symbol: str) -> pd.DataFrame:
-    path = NAV_HISTORY_PATH(symbol)
+    path = nav_history_path(symbol)
     if not path.exists():
         print(f"  [warn] nav_history file not found for {symbol}: {path}")
         return pd.DataFrame()
@@ -158,7 +163,14 @@ def load_ime_contract_history(contract: str) -> pd.DataFrame:
         "TodaySettlementPrice": f"{prefix}_settlement_price",
         "TradesVolume": f"{prefix}_trades_volume",
     })
-    return df[["date_greg", f"{prefix}_last_price", f"{prefix}_settlement_price", f"{prefix}_trades_volume"]]
+    return df[
+        [
+            "date_greg",
+            f"{prefix}_last_price",
+            f"{prefix}_settlement_price",
+            f"{prefix}_trades_volume",
+        ]
+    ]
 
 
 def load_usdt_daily() -> pd.DataFrame:

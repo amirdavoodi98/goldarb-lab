@@ -10,10 +10,10 @@ from typing import Any, Literal
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
-from goldarb.data import snapshot_close
-from goldarb.signals.stats import premium_from_row, to_float
-from goldarb.simulation.engine import QUANTITY_QUANTUM
-from goldarb.simulation.models import (
+from ..data import snapshot_close
+from ..signals.stats import premium_from_row, to_float
+from ..simulation.engine import QUANTITY_QUANTUM
+from ..simulation.models import (
     Fill,
     MarketSnapshot,
     Order,
@@ -22,7 +22,7 @@ from goldarb.simulation.models import (
     Side,
     decimal_value,
 )
-from goldarb.strategy import StrategyContext
+from ..strategy import StrategyContext
 
 ZERO = Decimal(0)
 

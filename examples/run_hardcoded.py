@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from goldarb import AppConfig, StrategyRunner, GOLD_FUND_SYMBOLS
+from goldarb import GOLD_FUND_SYMBOLS, AppConfig, StrategyRunner
 
 
 def main() -> None:

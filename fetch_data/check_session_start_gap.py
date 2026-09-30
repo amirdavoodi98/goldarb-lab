@@ -8,7 +8,7 @@ Run once, on a closed trading day, to get clean evidence for the
 platform-team backend request (Chunk 7).
 """
 
-from .goldarb_client import get_client, close_client
+from .goldarb_client import close_client, get_client
 from .goldarb_data_bundle import get_fund_candles_1m
 
 FUND_SYMBOLS = ("عیار", "طلا", "کهربا", "مثقال", "آتش")
@@ -22,7 +22,8 @@ def main() -> None:
             try:
                 bars = get_fund_candles_1m(client, symbol, start=CHECK_DATE, end=CHECK_DATE)
                 if bars:
-                    print(f"{symbol}: {len(bars)} bars, {bars[0]['bar_at']} to {bars[-1]['bar_at']}")
+                    first, last = bars[0]["bar_at"], bars[-1]["bar_at"]
+                    print(f"{symbol}: {len(bars)} bars, {first} to {last}")
                 else:
                     print(f"{symbol}: 0 bars returned")
             except Exception as exc:
