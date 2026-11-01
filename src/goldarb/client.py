@@ -7,7 +7,9 @@ from typing import Self
 
 from ._http import LabHttp
 from .fund import FundAPI
+from .live import LiveAPI
 from .market import MarketAPI
+from .ml import MlAPI
 from .simulation.remote import RemoteSimulator
 
 
@@ -21,6 +23,8 @@ class LabClient:
     def __init__(self, *, base_url: str, token: str, timeout: float = 60.0) -> None:
         self._http = LabHttp(base_url=base_url, token=token, timeout=timeout)
         self.fund = FundAPI(self._http)
+        self.live = LiveAPI(self._http)
+        self.ml = MlAPI(self._http)
         self.market = MarketAPI(self._http)
         self.simulation = RemoteSimulator(self._http)
 

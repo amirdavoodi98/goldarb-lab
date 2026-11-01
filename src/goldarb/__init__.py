@@ -76,4 +76,4 @@ __all__ = [
     "read_symbol_bars",
     "run_premium_threshold",
 ]
-__version__ = "0.8.0"
+__version__ = "0.9.0"
