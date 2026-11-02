@@ -26,8 +26,8 @@ class LiveAPI:
         that candidate times are trade-execution timestamps. Backend pilot
         must be enabled. This method neither fetches vendors nor subscribes.
         """
-        if source not in {"tsetmc", "mofid"}:
-            raise ValueError("source must be tsetmc or mofid")
+        if source not in {"tsetmc", "mofid", "agah"}:
+            raise ValueError("source must be tsetmc, mofid or agah")
         if symbols is not None and (not symbols or len(symbols) > 31):
             raise ValueError("symbols must contain 1–31 fund symbols")
         params = {
@@ -58,7 +58,7 @@ class LiveAPI:
         """
         import re
 
-        if source not in {"mofid", "tsetmc"} or not re.fullmatch(r"[0-9]+-[0-9]+", cursor):
+        if source not in {"mofid", "tsetmc", "agah"} or not re.fullmatch(r"[0-9]+-[0-9]+", cursor):
             raise ValueError("Invalid source or cursor")
         if not 1 <= limit <= 500 or not 0 <= block_ms <= 10000:
             raise ValueError("Invalid limit or block_ms")
