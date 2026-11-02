@@ -30,7 +30,7 @@ def test_diagnostic_mode_and_bad_schema():
         with pytest.raises(ValueError, match="schema"):
             client.live.snapshot()
         with pytest.raises(ValueError, match="tsetmc"):
-            client.live.snapshot(source="agah")
+            client.live.snapshot(source="unknown")
         with pytest.raises(ValueError, match="symbols"):
             client.live.snapshot(symbols=[])
 
@@ -103,3 +103,31 @@ def test_package_and_release_metadata_versions_agree():
 
     metadata = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())
     assert goldarb.__version__ == metadata["project"]["version"]
+
+
+@respx.mock
+def test_agah_authenticated_snapshot_and_events_preserve_source_clock():
+    event = {
+        "source": "agah",
+        "source_timestamp": "2026-11-02T10:30:00+00:00",
+        "source_event_time": None,
+        "source_time_status": "unverified",
+    }
+    snapshot = respx.get("https://example.test/api/v1/lab/market-data/snapshot/").respond(
+        200, json={"schema_version": 1, "observations": [event], "cursor": "1-0"}
+    )
+    events = respx.get("https://example.test/api/v1/lab/market-data/events/").respond(
+        200,
+        json={"schema_version": 1, "events": [{"cursor": "2-0", "event": event}], "cursor": "2-0"},
+    )
+    with LabClient(base_url="https://example.test", token="test-token") as client:
+        assert client.live.snapshot(source="agah", require_verified_source_time=False)[
+            "observations"
+        ] == [event]
+        assert (
+            client.live.events(source="agah", cursor="1-0", block_ms=0)["events"][0]["event"]
+            == event
+        )
+    assert snapshot.calls[0].request.url.params["source"] == "agah"
+    assert events.calls[0].request.url.params["source"] == "agah"
+    assert events.calls[0].request.headers["Authorization"] == "Token test-token"
