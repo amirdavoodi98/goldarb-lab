@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import sqlite3
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Self
+from typing import Self
 
 from ..execution import (
     FeeModel,
@@ -385,7 +386,7 @@ class LocalPaperBroker:
                 self._match_account(db, account["id"], event_id, clock)
                 self._record_equity(db, account["id"], event_id, clock.isoformat())
 
-    def _activate_due_orders(self, db: Any, clock: datetime) -> None:
+    def _activate_due_orders(self, db: sqlite3.Connection, clock: datetime) -> None:
         for order in list(self.orders._orders.values()):
             if order.status != OrderStatus.CREATED:
                 continue
@@ -398,7 +399,7 @@ class LocalPaperBroker:
 
     def _match_account(
         self,
-        db: Any,
+        db: sqlite3.Connection,
         account_id: str,
         event_id: str,
         timestamp: datetime,
@@ -565,7 +566,7 @@ class LocalPaperBroker:
                 for event in self.orders.events_for(order.id)[-1:]:
                     insert_order_event(db, event)
 
-    def _load_positions(self, db: Any, account_id: str) -> dict[str, LedgerPosition]:
+    def _load_positions(self, db: sqlite3.Connection, account_id: str) -> dict[str, LedgerPosition]:
         rows = db.execute(
             "SELECT * FROM positions WHERE account_id=?", (account_id,)
         ).fetchall()
@@ -628,7 +629,7 @@ class LocalPaperBroker:
         ]
 
     def _record_equity(
-        self, db: Any, account_id: str, event_id: str, timestamp: str
+        self, db: sqlite3.Connection, account_id: str, event_id: str, timestamp: str
     ) -> None:
         account = account_from_row(
             db.execute("SELECT * FROM accounts WHERE id=?", (account_id,)).fetchone()

@@ -13,6 +13,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Self
 
+from .execution import Broker
 from .execution_policy import (
     REMOTE_POLICY_ERROR,
     ExecutionPolicy,
@@ -67,7 +68,7 @@ class StrategyContext:
 
     def __init__(
         self,
-        broker: Any,
+        broker: Broker,
         account_id: str,
         *,
         config: Mapping[str, Any] | None = None,

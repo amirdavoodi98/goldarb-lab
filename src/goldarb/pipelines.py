@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -72,8 +72,8 @@ def _run(
     *,
     client: Any | None = None,
     simulator: LocalSimulator | None = None,
-    sleep: Any = None,
-    now: Any = None,
+    sleep: Callable[[float], None] | None = None,
+    now: Callable[[], datetime] | None = None,
     stop_at: datetime | None = None,
 ) -> RunResult:
     runner = StrategyRunner.from_config(config, client=client).set_strategy(strategy)
@@ -139,8 +139,8 @@ def iran_session_live(
     fee: FeeModel | None = None,
     simulator: LocalSimulator | None = None,
     stop_at: datetime | None = None,
-    sleep: Any = None,
-    now: Any = None,
+    sleep: Callable[[float], None] | None = None,
+    now: Callable[[], datetime] | None = None,
 ) -> RunResult:
     """Paper-trade through today's 12:00–18:00 Tehran session at 1s polls.
 

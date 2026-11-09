@@ -136,7 +136,8 @@ class PaperOrder:
 class ExecutionPolicy(Protocol):
     """One translation from a raw strategy order to a paper order."""
 
-    name: str
+    @property
+    def name(self) -> str: ...
 
     def translate(
         self,

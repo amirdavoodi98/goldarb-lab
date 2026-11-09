@@ -6,15 +6,69 @@ import hashlib
 import json
 import tempfile
 from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, TypedDict, runtime_checkable
 from urllib.parse import quote
 
 from .universe import GOLD_FUND_SYMBOLS
 
 ARCHIVE_SCHEMA_VERSION = 2
 _MANIFEST = "manifest.json"
+
+
+class ArchiveQuality(TypedDict):
+    """Per-symbol quality report persisted in version 2 manifests."""
+
+    duplicates_removed: int
+    invalid_rows: int
+    out_of_order_rows: int
+    covered_days: list[str]
+    missing_days: list[str]
+
+
+class ArchiveManifest(TypedDict, total=False):
+    """Known manifest fields; older archives may omit version 2 metadata."""
+
+    schema_version: int
+    format: str
+    source: str
+    grain: str
+    start: str
+    end: str
+    actual_start: str | None
+    actual_end: str | None
+    symbols: list[str]
+    bar_count: int
+    counts: dict[str, int]
+    checksums: dict[str, str]
+    quality: dict[str, ArchiveQuality]
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True)
+class _NormalizationReport:
+    duplicates_removed: int
+    invalid_rows: int
+    out_of_order_rows: int
+
+
+@dataclass(frozen=True)
+class _Coverage:
+    covered_days: list[str]
+    missing_days: list[str]
+
+
+def _quality(report: _NormalizationReport, coverage: _Coverage) -> ArchiveQuality:
+    return {
+        "duplicates_removed": report.duplicates_removed,
+        "invalid_rows": report.invalid_rows,
+        "out_of_order_rows": report.out_of_order_rows,
+        "covered_days": coverage.covered_days,
+        "missing_days": coverage.missing_days,
+    }
 
 
 def _day(value: date | datetime | str) -> date:
@@ -31,7 +85,7 @@ def _bar_key(row: Mapping[str, Any]) -> str:
 
 def _normalized(
     rows: Sequence[Mapping[str, Any]],
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
+) -> tuple[list[dict[str, Any]], _NormalizationReport]:
     original_keys = [_bar_key(row) for row in rows if _bar_key(row)]
     out_of_order = sum(
         current < previous for previous, current in zip(original_keys, original_keys[1:])
@@ -52,11 +106,11 @@ def _normalized(
             continue
         seen.add(key)
         output.append(row)
-    return output, {
-        "duplicates_removed": duplicates,
-        "invalid_rows": invalid,
-        "out_of_order_rows": out_of_order,
-    }
+    return output, _NormalizationReport(
+        duplicates_removed=duplicates,
+        invalid_rows=invalid,
+        out_of_order_rows=out_of_order,
+    )
 
 
 def _checksum(path: Path) -> str:
@@ -71,7 +125,7 @@ def _coverage(
     rows: Sequence[Mapping[str, Any]],
     start: date | datetime | str,
     end: date | datetime | str,
-) -> dict[str, Any]:
+) -> _Coverage:
     first = _day(start)
     last = _day(end)
     covered = sorted({_day(stamp) for row in rows if (stamp := _bar_key(row))})
@@ -82,13 +136,13 @@ def _coverage(
         cursor += timedelta(days=1)
     covered_set = set(covered)
     missing = [item.isoformat() for item in expected if item not in covered_set]
-    return {
-        "covered_days": [item.isoformat() for item in covered],
-        "missing_days": missing,
-    }
+    return _Coverage(
+        covered_days=[item.isoformat() for item in covered],
+        missing_days=missing,
+    )
 
 
-def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
+def _atomic_json(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
         "w", encoding="utf-8", dir=path.parent, delete=False
@@ -104,7 +158,7 @@ class DatasetStore(Protocol):
 
     directory: Path
 
-    def read_manifest(self) -> dict[str, Any]: ...
+    def read_manifest(self) -> ArchiveManifest: ...
 
     def iter_symbol(self, symbol: str) -> Iterator[dict[str, Any]]: ...
 
@@ -128,11 +182,11 @@ class JsonlDatasetStore:
     def __init__(self, directory: str | Path) -> None:
         self.directory = Path(directory)
 
-    def read_manifest(self) -> dict[str, Any]:
+    def read_manifest(self) -> ArchiveManifest:
         path = self.directory / _MANIFEST
         if not path.exists():
             raise FileNotFoundError(f"archive manifest not found: {path}")
-        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest: ArchiveManifest = json.loads(path.read_text(encoding="utf-8"))
         version = int(manifest.get("schema_version", 1))
         if version > ARCHIVE_SCHEMA_VERSION:
             raise RuntimeError(
@@ -172,7 +226,7 @@ class JsonlDatasetStore:
         incremental: bool = False,
     ) -> Path:
         self.directory.mkdir(parents=True, exist_ok=True)
-        old: dict[str, Any] = {}
+        old: ArchiveManifest = {}
         manifest_path = self.directory / _MANIFEST
         if incremental and manifest_path.exists():
             old = self.read_manifest()
@@ -181,7 +235,7 @@ class JsonlDatasetStore:
         symbols = sorted(set(old.get("symbols", ())) | {str(s) for s in by_symbol})
         counts: dict[str, int] = {}
         checksums: dict[str, str] = {}
-        quality: dict[str, dict[str, Any]] = {}
+        quality: dict[str, ArchiveQuality] = {}
         actual_stamps: list[str] = []
         for symbol in symbols:
             rows: list[Mapping[str, Any]] = []
@@ -202,12 +256,11 @@ class JsonlDatasetStore:
             actual_stamps.extend(stamps)
             counts[symbol] = len(normalized)
             checksums[symbol] = _checksum(path)
-            quality[symbol] = {
-                **report,
-                **_coverage(normalized, archive_start, archive_end),
-            }
+            quality[symbol] = _quality(
+                report, _coverage(normalized, archive_start, archive_end)
+            )
         now = datetime.now(UTC).isoformat()
-        manifest = {
+        manifest: ArchiveManifest = {
             "schema_version": ARCHIVE_SCHEMA_VERSION,
             "format": self.format,
             "source": source or old.get("source", ""),
@@ -250,11 +303,11 @@ class ParquetDatasetStore:
     def _path(self, symbol: str) -> Path:
         return self.directory / f"symbol={quote(symbol, safe='')}" / "bars.parquet"
 
-    def read_manifest(self) -> dict[str, Any]:
+    def read_manifest(self) -> ArchiveManifest:
         path = self.directory / _MANIFEST
         if not path.exists():
             raise FileNotFoundError(f"archive manifest not found: {path}")
-        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest: ArchiveManifest = json.loads(path.read_text(encoding="utf-8"))
         version = int(manifest.get("schema_version", 1))
         if version > ARCHIVE_SCHEMA_VERSION:
             raise RuntimeError(
@@ -285,7 +338,7 @@ class ParquetDatasetStore:
     ) -> Path:
         pa, pq = self._modules()
         self.directory.mkdir(parents=True, exist_ok=True)
-        old: dict[str, Any] = {}
+        old: ArchiveManifest = {}
         if incremental and (self.directory / _MANIFEST).exists():
             old = self.read_manifest()
         archive_start = min(str(old.get("start") or _day(start)), _day(start).isoformat())
@@ -293,7 +346,7 @@ class ParquetDatasetStore:
         symbols = sorted(set(old.get("symbols", ())) | {str(s) for s in by_symbol})
         counts: dict[str, int] = {}
         checksums: dict[str, str] = {}
-        quality: dict[str, dict[str, Any]] = {}
+        quality: dict[str, ArchiveQuality] = {}
         stamps: list[str] = []
         for symbol in symbols:
             rows: list[Mapping[str, Any]] = []
@@ -308,31 +361,28 @@ class ParquetDatasetStore:
             stamps.extend(symbol_stamps)
             counts[symbol] = len(normalized)
             checksums[symbol] = _checksum(path)
-            quality[symbol] = {
-                **report,
-                **_coverage(normalized, archive_start, archive_end),
-            }
+            quality[symbol] = _quality(
+                report, _coverage(normalized, archive_start, archive_end)
+            )
         now = datetime.now(UTC).isoformat()
-        _atomic_json(
-            self.directory / _MANIFEST,
-            {
-                "schema_version": ARCHIVE_SCHEMA_VERSION,
-                "format": self.format,
-                "source": source or old.get("source", ""),
-                "grain": grain,
-                "start": archive_start,
-                "end": archive_end,
-                "actual_start": min(stamps, default=None),
-                "actual_end": max(stamps, default=None),
-                "symbols": symbols,
-                "bar_count": sum(counts.values()),
-                "counts": counts,
-                "checksums": checksums,
-                "quality": quality,
-                "created_at": old.get("created_at", now),
-                "updated_at": now,
-            },
-        )
+        manifest: ArchiveManifest = {
+            "schema_version": ARCHIVE_SCHEMA_VERSION,
+            "format": self.format,
+            "source": source or old.get("source", ""),
+            "grain": grain,
+            "start": archive_start,
+            "end": archive_end,
+            "actual_start": min(stamps, default=None),
+            "actual_end": max(stamps, default=None),
+            "symbols": symbols,
+            "bar_count": sum(counts.values()),
+            "counts": counts,
+            "checksums": checksums,
+            "quality": quality,
+            "created_at": old.get("created_at", now),
+            "updated_at": now,
+        }
+        _atomic_json(self.directory / _MANIFEST, manifest)
         return self.directory
 
 
@@ -374,7 +424,7 @@ def write_symbol_bars(
 
 def read_symbol_bars(
     directory: str | Path,
-) -> tuple[dict[str, Any], dict[str, list[dict[str, Any]]]]:
+) -> tuple[ArchiveManifest, dict[str, list[dict[str, Any]]]]:
     """Load an archive into memory (legacy convenience API)."""
     store = dataset_store(directory)
     manifest = store.read_manifest()
@@ -438,6 +488,8 @@ def download_symbol_bars(
 
 __all__ = [
     "ARCHIVE_SCHEMA_VERSION",
+    "ArchiveManifest",
+    "ArchiveQuality",
     "DatasetStore",
     "JsonlDatasetStore",
     "ParquetDatasetStore",

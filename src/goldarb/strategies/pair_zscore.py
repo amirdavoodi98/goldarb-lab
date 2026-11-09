@@ -15,11 +15,12 @@ from decimal import Decimal
 from typing import Any
 
 from ..data import snapshot_close
+from ..signals.models import PairSpreadStats
 from ..signals.pair_spread import (
     PAIR_SPREAD_DEFAULT_WINDOW,
     PAIR_SPREAD_MIN_SAMPLES,
     PAIR_SPREAD_Z_THRESHOLD,
-    compute_pair_spread_stats,
+    evaluate_pair_spread,
 )
 from ..simulation.models import Fill, Side, decimal_value
 from ..strategy import Strategy, StrategyContext
@@ -65,7 +66,7 @@ class PairZScoreStrategy(Strategy):
         self.pair_label = (self.fund_a, self.fund_b)
         self.events: list[dict[str, Any]] = []
         self.last_status: str | None = None
-        self.last_stats: dict[str, Any] | None = None
+        self.last_stats: PairSpreadStats | None = None
 
     def export_state(self) -> dict[str, Any]:
         return {
@@ -119,7 +120,7 @@ class PairZScoreStrategy(Strategy):
         series = self._spread_series(snapshot.timestamp)
         long_px = snapshot_close(snapshot, self.fund_a)
         short_px = snapshot_close(snapshot, self.fund_b)
-        stats = compute_pair_spread_stats(
+        stats = evaluate_pair_spread(
             fund_a=self.fund_a,
             fund_b=self.fund_b,
             series=series,
@@ -131,10 +132,10 @@ class PairZScoreStrategy(Strategy):
             min_samples=self.min_samples,
             z_threshold=self.z_threshold,
         )
-        self.last_stats = stats
-        self.last_status = str(stats.get("status") or "")
-        signal = stats.get("pair_signal") or {}
-        active = bool(signal.get("active"))
+        self.last_stats = stats.to_dict()
+        self.last_status = stats.status
+        signal = stats.pair_signal
+        active = signal.active
 
         if not active:
             if self._current_pair is None:
@@ -146,16 +147,15 @@ class PairZScoreStrategy(Strategy):
                 event_type="exit_pair",
                 long_sym=prev[0],
                 short_sym=prev[1],
-                z_score=stats.get("z_score"),
+                z_score=stats.z_score,
                 label_fa=f"خروج از جفت {prev[0]}/{prev[1]}",
             )
             self._current_pair = None
             return
 
-        target = (str(signal["long"]), str(signal["short"]))
-        z_score = stats.get("z_score")
-        z_f = float(z_score) if z_score is not None else None
-        label = signal.get("detail_fa") or signal.get("label_fa")
+        target = (str(signal.long_symbol), str(signal.short_symbol))
+        z_score = stats.z_score
+        label = signal.detail_fa or signal.label_fa
         if target == self._current_pair or pair_intent_pending(ctx, target):
             return
 
@@ -168,7 +168,7 @@ class PairZScoreStrategy(Strategy):
             capital_per_side=self.capital_per_side,
             prefix=self.name,
             event_type="rebalance_pair" if had_open else "enter_pair",
-            gap=z_f,
+            gap=z_score,
             label_fa=str(label) if label else None,
         )
         if not submitted:

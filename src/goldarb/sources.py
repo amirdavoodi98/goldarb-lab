@@ -10,7 +10,8 @@ from urllib.parse import unquote, urlparse
 from zoneinfo import ZoneInfo
 
 from .archive import DatasetStore, dataset_store
-from .data import HistoricalDataProvider, LabLiveFeed, LiveMarketFeed
+from .data import HistoricalDataProvider, LabLiveFeed
+from .feed_contracts import BulkCandleFeed, FundClient, LiveMarketFeed
 from .session import SESSION_CLOSE, SESSION_OPEN, TEHRAN, grain_step
 
 
@@ -34,9 +35,9 @@ class LiveMarketSource(LiveMarketFeed, Protocol):
 
 
 class GoldArbApiSource:
-    def __init__(self, client: Any) -> None:
+    def __init__(self, client: BulkCandleFeed | FundClient[BulkCandleFeed]) -> None:
         self.client = client
-        self.fund = getattr(client, "fund", client)
+        self.fund: BulkCandleFeed = client.fund if isinstance(client, FundClient) else client
 
     def bars(
         self,
@@ -131,11 +132,13 @@ def source_path(uri: str) -> Path:
     raise ValueError(f"source is not a local dataset URI: {uri}")
 
 
-HistoricalSourceFactory = Callable[[str, Any | None], HistoricalDatasetSource]
-LiveSourceFactory = Callable[[Any | None], LiveMarketSource]
+HistoricalClient = BulkCandleFeed | FundClient[BulkCandleFeed]
+LiveClient = LiveMarketFeed | FundClient[LiveMarketFeed]
+HistoricalSourceFactory = Callable[[str, HistoricalClient | None], HistoricalDatasetSource]
+LiveSourceFactory = Callable[[LiveClient | None], LiveMarketSource]
 
 
-def _api_historical(source: str, client: Any | None) -> HistoricalDatasetSource:
+def _api_historical(source: str, client: HistoricalClient | None) -> HistoricalDatasetSource:
     del source
     if client is None:
         raise ValueError("goldarb_api provider requires a LabClient")
@@ -143,14 +146,14 @@ def _api_historical(source: str, client: Any | None) -> HistoricalDatasetSource:
 
 
 def _archive_historical(format_hint: str | None) -> HistoricalSourceFactory:
-    def factory(source: str, client: Any | None) -> HistoricalDatasetSource:
+    def factory(source: str, client: HistoricalClient | None) -> HistoricalDatasetSource:
         del client
         return ArchiveDatasetSource(dataset_store(source_path(source), format_hint))
 
     return factory
 
 
-def _goldarb_live(client: Any | None) -> LiveMarketSource:
+def _goldarb_live(client: LiveClient | None) -> LiveMarketSource:
     if client is None:
         raise ValueError("GoldArb live provider requires a LabClient")
     return LabLiveFeed(client)
@@ -175,7 +178,7 @@ def historical_source(
     provider: str,
     source: str,
     *,
-    client: Any | None = None,
+    client: HistoricalClient | None = None,
 ) -> HistoricalDatasetSource:
     kind = provider.strip().lower()
     try:
@@ -185,7 +188,7 @@ def historical_source(
     return factory(source, client)
 
 
-def live_source(provider: str, *, client: Any | None = None) -> LiveMarketSource:
+def live_source(provider: str, *, client: LiveClient | None = None) -> LiveMarketSource:
     kind = provider.strip().lower()
     try:
         factory = LIVE_SOURCE_FACTORIES[kind]

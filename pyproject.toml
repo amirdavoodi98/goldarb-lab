@@ -19,7 +19,7 @@ dependencies = [
 pandas = ["pandas>=2.0"]
 parquet = ["pyarrow>=15.0"]
 yaml = ["PyYAML>=6.0"]
-dev = ["pytest>=8.0", "respx>=0.21"]
+dev = ["pytest>=8.0", "respx>=0.21", "mypy==1.18.2"]
 
 [project.urls]
 Homepage = "https://github.com/amirdavoodi98/goldarb-lab"
@@ -39,3 +39,32 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
+
+# Strictly checked application boundaries. External transport payloads remain dynamic.
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+files = [
+  "src/goldarb/signals/models.py",
+  "src/goldarb/signals/results.py",
+  "src/goldarb/signals/bubble_rank.py",
+  "src/goldarb/signals/pair_spread.py",
+  "src/goldarb/feed_contracts.py",
+  "src/goldarb/data.py",
+  "src/goldarb/sources.py",
+  "src/goldarb/config.py",
+  "src/goldarb/execution.py",
+  "src/goldarb/execution_policy.py",
+  "src/goldarb/gateway.py",
+  "src/goldarb/engine.py",
+  "src/goldarb/strategy.py",
+  "src/goldarb/runtime.py",
+  "tests/typing/contracts.py",
+]
+strict = true
+follow_imports = "silent"
+
+# Optional YAML loader returns external data validated by AppConfig.from_mapping.
+[[tool.mypy.overrides]]
+module = ["yaml"]
+ignore_missing_imports = true
