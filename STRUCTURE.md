@@ -4,7 +4,7 @@
 
 Market-data client, Strategy contract, and paper simulation.
 
-- `client.py`, `fund.py`, `market.py`, `_http.py` — HTTP client for the platform API
+- `client.py`, `fund.py`, `market.py`, `live.py`, `ml.py`, `_http.py` — HTTP client for the platform API
 - `data.py`, `sources.py`, `archive.py`, `session.py` — historical and live market feeds
 - `strategy.py`, `strategies/`, `signals/` — Strategy contract, built-in strategies, signal math
 - `engine.py`, `runtime.py`, `pipelines.py`, `config.py` — backtest / live loop and YAML runner

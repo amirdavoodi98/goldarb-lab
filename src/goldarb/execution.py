@@ -20,6 +20,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from .simulation.engine import ZERO, fee_for
 from .simulation.models import (
+    Account,
     Fill,
     MarketSnapshot,
     Order,
@@ -42,9 +43,9 @@ class Broker(Protocol):
         label: str = "",
         fee_rate: Decimal | float | str = "0.0005",
         allow_short: bool = False,
-    ) -> Any: ...
+    ) -> Account: ...
 
-    def get_account(self, account_id: str) -> Any: ...
+    def get_account(self, account_id: str) -> Account: ...
 
     def submit_order(
         self,
@@ -78,10 +79,30 @@ class PaperBroker(Broker, Protocol):
     def equity_history(self, account_id: str) -> list[dict[str, str]]: ...
 
 
+@runtime_checkable
+class Closable(Protocol):
+    def close(self) -> None: ...
+
+
+@runtime_checkable
+class ConfigurableExecution(Protocol):
+    """Optional broker capability for constructor-independent model injection."""
+
+    def configure_execution(
+        self, *, fee: FeeModel, slippage: SlippageModel, latency: LatencyModel
+    ) -> None: ...
+
+
+@runtime_checkable
+class DelayedOrderSettlement(Protocol):
+    def settle_delayed_orders(self) -> None: ...
+
+
 class ExecutionDriver(Protocol):
     """Deliver market events according to the broker's matching ownership."""
 
-    name: str
+    @property
+    def name(self) -> str: ...
 
     def on_market(self, broker: Broker, snapshot: MarketSnapshot) -> None: ...
 
@@ -123,7 +144,8 @@ class LocalMarketIngress:
 
 
 class FeeModel(Protocol):
-    name: str
+    @property
+    def name(self) -> str: ...
 
     def rate(self) -> Decimal: ...
 
@@ -173,7 +195,8 @@ class NoFee(PercentFee):
 
 
 class SlippageModel(Protocol):
-    name: str
+    @property
+    def name(self) -> str: ...
 
     def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot: ...
 
@@ -323,7 +346,8 @@ class PercentSlippage:
 
 
 class LatencyModel(Protocol):
-    name: str
+    @property
+    def name(self) -> str: ...
 
     def apply_snapshot(self, snapshot: MarketSnapshot) -> MarketSnapshot: ...
 

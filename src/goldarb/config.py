@@ -7,8 +7,11 @@ import tomllib
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
+from datetime import time
 from pathlib import Path
+from types import EllipsisType
 from typing import Any, Mapping, Self
+from zoneinfo import ZoneInfo
 
 from .universe import GOLD_FUND_SYMBOLS
 
@@ -189,6 +192,15 @@ class RuntimeConfig:
 
 
 @dataclass(frozen=True)
+class SessionSchedule:
+    """Parsed application settings; provider code no longer interprets strings."""
+
+    timezone: ZoneInfo
+    opens_at: time
+    closes_at: time
+
+
+@dataclass(frozen=True)
 class SessionConfig:
     timezone: str = "Asia/Tehran"
     start: str = "12:00:00"
@@ -197,6 +209,13 @@ class SessionConfig:
     lookback_days: int = 0
     include_session_bars: bool = False
     max_polls: int | None = None
+
+    def resolve_schedule(self) -> SessionSchedule:
+        return SessionSchedule(
+            timezone=ZoneInfo(self.timezone),
+            opens_at=time.fromisoformat(self.start),
+            closes_at=time.fromisoformat(self.end),
+        )
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any] | None) -> Self:
@@ -451,8 +470,8 @@ class AppConfigBuilder:
         mode: str | None = None,
         initial_cash: str | int | float | None = None,
         allow_short: bool | None = None,
-        database: str | Path | None = ...,  # type: ignore[assignment]
-        account_id: str | None = ...,  # type: ignore[assignment]
+        database: str | Path | None | EllipsisType = ...,
+        account_id: str | None | EllipsisType = ...,
         label: str | None = None,
         broker: str | None = None,
         state_path: str | Path | None = None,
@@ -464,10 +483,10 @@ class AppConfigBuilder:
             self.set_initial_cash(initial_cash)
         if allow_short is not None:
             self.set_allow_short(allow_short)
-        if database is not ...:
-            self.set_database(database)  # type: ignore[arg-type]
-        if account_id is not ...:
-            self.set_account_id(account_id)  # type: ignore[arg-type]
+        if not isinstance(database, EllipsisType):
+            self.set_database(database)
+        if not isinstance(account_id, EllipsisType):
+            self.set_account_id(account_id)
         if label is not None:
             self.set_label(label)
         if broker is not None:
@@ -535,8 +554,8 @@ class AppConfigBuilder:
         dataset: str | None = None,
         symbols: Sequence[str] | str | None = None,
         grain: str | None = None,
-        start: str | None = ...,  # type: ignore[assignment]
-        end: str | None = ...,  # type: ignore[assignment]
+        start: str | None | EllipsisType = ...,
+        end: str | None | EllipsisType = ...,
         fill_session: bool | None = None,
         session_hours: bool | None = None,
         quote_fill: str | None = None,
@@ -551,10 +570,10 @@ class AppConfigBuilder:
             self.set_symbols(symbols)
         if grain is not None:
             self.set_grain(grain)
-        if start is not ... or end is not ...:
-            new_start = self._data.start if start is ... else start
-            new_end = self._data.end if end is ... else end
-            self.set_period(new_start, new_end)  # type: ignore[arg-type]
+        if not isinstance(start, EllipsisType) or not isinstance(end, EllipsisType):
+            new_start = self._data.start if isinstance(start, EllipsisType) else start
+            new_end = self._data.end if isinstance(end, EllipsisType) else end
+            self.set_period(new_start, new_end)
         if fill_session is not None:
             self.set_fill_session(fill_session)
         if session_hours is not None:
@@ -599,7 +618,7 @@ class AppConfigBuilder:
         source: str = "https://goldarb.ir",
         grain: str = "1s",
         mode: str = "live_paper_local",
-        max_polls: int | None = ...,  # type: ignore[assignment]
+        max_polls: int | None | EllipsisType = ...,
         poll_seconds: float | None = None,
     ) -> Self:
         """Convenience: live API provider + live_paper_local defaults."""
@@ -611,8 +630,8 @@ class AppConfigBuilder:
             self.set_symbols(symbols)
         if poll_seconds is not None:
             self.set_poll_seconds(poll_seconds)
-        if max_polls is not ...:
-            self.set_max_polls(max_polls)  # type: ignore[arg-type]
+        if not isinstance(max_polls, EllipsisType):
+            self.set_max_polls(max_polls)
         return self
 
     # --- session ------------------------------------------------------
@@ -656,7 +675,7 @@ class AppConfigBuilder:
         poll_seconds: float | None = None,
         lookback_days: int | None = None,
         include_session_bars: bool | None = None,
-        max_polls: int | None = ...,  # type: ignore[assignment]
+        max_polls: int | None | EllipsisType = ...,
     ) -> Self:
         if timezone is not None:
             self.set_timezone(timezone)
@@ -671,8 +690,8 @@ class AppConfigBuilder:
             self.set_lookback_days(lookback_days)
         if include_session_bars is not None:
             self.set_include_session_bars(include_session_bars)
-        if max_polls is not ...:
-            self.set_max_polls(max_polls)  # type: ignore[arg-type]
+        if not isinstance(max_polls, EllipsisType):
+            self.set_max_polls(max_polls)
         return self
 
     # --- strategy / models --------------------------------------------

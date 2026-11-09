@@ -16,8 +16,9 @@ from ..signals.bubble_rank import (
     BUBBLE_RANK_MIN_GAP,
     BUBBLE_RANK_MIN_SAMPLES,
     BUBBLE_RANK_WINDOW_DAYS,
-    compute_rankings,
+    evaluate_rankings,
 )
+from ..signals.models import BubbleRanking
 from ..simulation.models import Fill, Side, decimal_value
 from ..strategy import Strategy, StrategyContext
 from .pairs import (
@@ -58,7 +59,7 @@ class BubbleRankStrategy(Strategy):
         self._premiums: dict[str, list[tuple[datetime, float]]] = {}
         self._state_loaded = False
         self.events: list[dict[str, Any]] = []
-        self.last_ranking: dict[str, Any] | None = None
+        self.last_ranking: BubbleRanking | None = None
 
     def export_state(self) -> dict[str, Any]:
         return {
@@ -102,15 +103,15 @@ class BubbleRankStrategy(Strategy):
             for symbol in present
             if symbol in self._premiums
         }
-        ranking = compute_rankings(
+        ranking = evaluate_rankings(
             live_history,
             min_samples=self.min_samples,
             window_days=self.window_days,
             min_gap=self.min_gap,
         )
-        self.last_ranking = ranking
-        pair = ranking.get("best_pair")
-        if not pair or not pair.get("active"):
+        self.last_ranking = ranking.to_dict()
+        pair = ranking.best_pair
+        if pair is None or not pair.active:
             if self._current_pair is None:
                 return
             prev = self._current_pair
@@ -126,10 +127,9 @@ class BubbleRankStrategy(Strategy):
             self._current_pair = None
             return
 
-        target = (str(pair["long"]), str(pair["short"]))
-        gap = pair.get("gap")
-        gap_f = float(gap) if gap is not None else None
-        label = pair.get("label_fa")
+        target = (pair.long_symbol, pair.short_symbol)
+        gap = pair.gap
+        label = pair.label_fa
         if target == self._current_pair or pair_intent_pending(ctx, target):
             return
 
@@ -142,7 +142,7 @@ class BubbleRankStrategy(Strategy):
             capital_per_side=self.capital_per_side,
             prefix=self.name,
             event_type="rebalance_pair" if had_open else "enter_pair",
-            gap=gap_f,
+            gap=gap,
             label_fa=str(label) if label else None,
         )
         if not submitted:

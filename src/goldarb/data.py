@@ -10,6 +10,14 @@ from typing import Any, Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
 from .config import QUOTE_FILL_MODES
+from .feed_contracts import (
+    BulkCandleFeed,
+    BulkLastPrices,
+    BulkNavs,
+    BulkOrderbooks,
+    FundClient,
+    LiveMarketFeed,
+)
 from .session import (
     ONE_SECOND,
     SESSION_CLOSE,
@@ -34,29 +42,11 @@ class DataProvider(Protocol):
     def events(self) -> Iterator[MarketSnapshot]: ...
 
 
-@runtime_checkable
-class LiveMarketFeed(Protocol):
-    """Narrow live-data surface; ``LabClient.fund`` satisfies this."""
-
-    def last_price(self, symbol: str) -> dict[str, Any]: ...
-
-    def orderbook(self, symbol: str) -> dict[str, Any]: ...
-
-    def candles(
-        self,
-        symbol: str,
-        *,
-        start: date | datetime | str,
-        end: date | datetime | str,
-        grain: str = "1s",
-    ) -> list[dict[str, Any]]: ...
-
-
 class LabLiveFeed:
     """Adapt ``LabClient`` (or ``client.fund``) to ``LiveMarketFeed``."""
 
-    def __init__(self, client: Any) -> None:
-        self._fund = getattr(client, "fund", client)
+    def __init__(self, client: LiveMarketFeed | FundClient[LiveMarketFeed]) -> None:
+        self._fund: LiveMarketFeed = client.fund if isinstance(client, FundClient) else client
 
     def last_price(self, symbol: str) -> dict[str, Any]:
         payload = self._fund.last_price(symbol)
@@ -85,30 +75,26 @@ class LabLiveFeed:
         end: date | datetime | str,
         grain: str = "1s",
     ) -> dict[str, list[dict[str, Any]]]:
-        many = getattr(self._fund, "candles_many", None)
-        if many is not None:
-            payload = many(symbols, start=start, end=end, grain=grain)
+        if isinstance(self._fund, BulkCandleFeed):
+            payload = self._fund.candles_many(symbols, start=start, end=end, grain=grain)
             return payload if isinstance(payload, dict) else {}
         return {
             symbol: self.candles(symbol, start=start, end=end, grain=grain) for symbol in symbols
         }
 
-    def last_prices(self) -> Any:
-        bulk = getattr(self._fund, "last_prices", None)
-        if bulk is not None:
-            return bulk()
+    def last_prices(self) -> object:
+        if isinstance(self._fund, BulkLastPrices):
+            return self._fund.last_prices()
         return None
 
-    def navs_live(self) -> Any:
-        bulk = getattr(self._fund, "navs_live", None)
-        if bulk is not None:
-            return bulk()
+    def navs_live(self) -> object:
+        if isinstance(self._fund, BulkNavs):
+            return self._fund.navs_live()
         return None
 
-    def orderbooks(self) -> Any:
-        bulk = getattr(self._fund, "orderbooks", None)
-        if bulk is not None:
-            return bulk()
+    def orderbooks(self) -> object:
+        if isinstance(self._fund, BulkOrderbooks):
+            return self._fund.orderbooks()
         return None
 
 
@@ -402,7 +388,7 @@ class HistoricalDataProvider:
             self._factory: Callable[[], Iterator[MarketSnapshot]] | None = None
         else:
             self._snapshots = []
-            self._factory = snapshots  # type: ignore[assignment]
+            self._factory = snapshots
 
     @classmethod
     def from_bars(
@@ -661,9 +647,8 @@ class LiveDataProvider:
         start: date,
         end: date,
     ) -> dict[str, list[dict[str, Any]]]:
-        many = getattr(self.feed, "candles_many", None)
-        if many is not None:
-            payload = many(
+        if isinstance(self.feed, BulkCandleFeed):
+            payload = self.feed.candles_many(
                 self.symbols,
                 start=start.isoformat(),
                 end=end.isoformat(),
@@ -685,9 +670,15 @@ class LiveDataProvider:
         return out
 
     def _live_snapshot(self, clock: datetime) -> MarketSnapshot | None:
-        lasts = _symbol_payload_map(getattr(self.feed, "last_prices", lambda: None)())
-        navs = _symbol_payload_map(getattr(self.feed, "navs_live", lambda: None)())
-        books = _symbol_payload_map(getattr(self.feed, "orderbooks", lambda: None)())
+        lasts = _symbol_payload_map(
+            self.feed.last_prices() if isinstance(self.feed, BulkLastPrices) else None
+        )
+        navs = _symbol_payload_map(
+            self.feed.navs_live() if isinstance(self.feed, BulkNavs) else None
+        )
+        books = _symbol_payload_map(
+            self.feed.orderbooks() if isinstance(self.feed, BulkOrderbooks) else None
+        )
         quotes: list[Quote] = []
         for symbol in self.symbols:
             last = lasts.get(symbol)

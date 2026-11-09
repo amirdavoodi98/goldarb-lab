@@ -298,3 +298,29 @@ class MarketAPI:
             {"benchmark": bench},
         )
         return payload if isinstance(payload, dict) else {"raw": payload}
+
+    def ime_daily(self, code: str, *, days: int = 30) -> list[dict[str, Any]]:
+        """
+        Daily IME CDC aggregates for a contract code (e.g. ``GoldBar``, ``SilverBar``).
+
+        Wraps ``GET /api/v1/market/ime-cdc/<code>/stats/?days=``.
+        Useful after offline ``import_ime_cdc_daily_csv`` backfills.
+        """
+        code_key = (code or "").strip()
+        if not code_key:
+            raise ValueError("code is required")
+        days_clamped = max(1, min(int(days), 180))
+        payload = self._http.get_json(
+            f"/api/v1/market/ime-cdc/{code_key}/stats/",
+            {"days": days_clamped},
+        )
+        if isinstance(payload, list):
+            rows = payload
+        elif isinstance(payload, dict):
+            raw = payload.get("results") or payload.get("stats") or payload.get("rows")
+            rows = raw if isinstance(raw, list) else []
+        else:
+            rows = []
+        rows = list(rows)
+        rows.sort(key=lambda r: str(r.get("trade_date") or r.get("date") or ""))
+        return rows

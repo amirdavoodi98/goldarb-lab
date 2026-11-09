@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, time
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable, Mapping, Self
-from zoneinfo import ZoneInfo
+from typing import Any, Callable, Mapping, Protocol, Self, TypeVar, runtime_checkable
 
 from .client import LabClient
 from .config import LIVE_PAPER_MODES, AppConfig, AppConfigBuilder, ModelConfig, StrategyConfig
@@ -16,6 +15,7 @@ from .data import HistoricalDataProvider, LiveDataProvider
 from .engine import BacktestEngine, LiveSimulationEngine, RunConfig, RunResult
 from .execution import (
     Broker,
+    Closable,
     ExecutionDriver,
     FeeModel,
     FixedLatency,
@@ -37,7 +37,9 @@ from .execution_policy import (
     OffsetLimitPolicy,
     policy_is_noop,
 )
+from .feed_contracts import historical_endpoint, live_endpoint
 from .gateway import (
+    LedgerGateway,
     OrderGateway,
     RecordingOrderGateway,
     TransportNotConfigured,
@@ -116,7 +118,13 @@ def _normalize_key(name: str) -> str:
     return name.replace("-", "_").strip().lower()
 
 
-def _model(config: ModelConfig, registry: dict[str, Callable[[dict[str, Any]], Any]]) -> Any:
+ModelT = TypeVar("ModelT")
+
+
+def _model(
+    config: ModelConfig,
+    registry: Mapping[str, Callable[[dict[str, Any]], ModelT]],
+) -> ModelT:
     key = config.name.replace("_", "").replace("-", "").lower()
     try:
         factory = registry[key]
@@ -200,10 +208,16 @@ def _client_from_env(*, timeout: float = 120.0) -> LabClient:
         )
 
 
+@runtime_checkable
+class RemoteSimulationClient(Protocol):
+    @property
+    def simulation(self) -> Broker: ...
+
+
 class StrategyRunner:
     """Build providers, execution models and broker from one validated config."""
 
-    def __init__(self, config: AppConfig, *, client: Any | None = None) -> None:
+    def __init__(self, config: AppConfig, *, client: object | None = None) -> None:
         config.validate()
         self.config = config
         self.client = client
@@ -221,7 +235,7 @@ class StrategyRunner:
         cls,
         config: AppConfig | AppConfigBuilder | str | Path,
         *,
-        client: Any | None = None,
+        client: object | None = None,
     ) -> StrategyRunner:
         if isinstance(config, AppConfigBuilder):
             loaded = config.build()
@@ -267,7 +281,7 @@ class StrategyRunner:
         self._strategy = strategy
         return self
 
-    def set_client(self, client: Any | None) -> Self:
+    def set_client(self, client: object | None) -> Self:
         """Use an existing ``LabClient`` (runner will not close it)."""
         self.client = client
         self._owns_client = False
@@ -286,7 +300,7 @@ class StrategyRunner:
         self._live_stop_at = stop_at
         return self
 
-    def _client(self) -> Any:
+    def _client(self) -> object:
         if self.client is not None:
             return self.client
         self.client = _client_from_env()
@@ -296,14 +310,12 @@ class StrategyRunner:
     def _historical_provider(self) -> HistoricalDataProvider:
         data = self.config.data
         session = self.config.session
-        zone = ZoneInfo(session.timezone)
-        open_at = time.fromisoformat(session.start)
-        close_at = time.fromisoformat(session.end)
+        schedule = session.resolve_schedule()
         needs_client = data.provider in {"goldarb_api", "api"}
         source = historical_source(
             data.provider,
             data.source,
-            client=self._client() if needs_client else None,
+            client=historical_endpoint(self._client()) if needs_client else None,
         )
         if isinstance(source, ArchiveDatasetSource):
             return source.provider(
@@ -313,9 +325,9 @@ class StrategyRunner:
                 grain=data.grain,
                 fill_session=data.fill_session,
                 session_hours=data.session_hours,
-                session_zone=zone,
-                session_open=open_at,
-                session_close=close_at,
+                session_zone=schedule.timezone,
+                session_open=schedule.opens_at,
+                session_close=schedule.closes_at,
                 quote_fill=data.quote_fill,
             )
         rows = source.bars(
@@ -331,21 +343,21 @@ class StrategyRunner:
             session_hours=data.session_hours,
             event_prefix=f"{data.grain}-{data.provider}",
             lazy=True,
-            session_zone=zone,
-            session_open=open_at,
-            session_close=close_at,
+            session_zone=schedule.timezone,
+            session_open=schedule.opens_at,
+            session_close=schedule.closes_at,
             quote_fill=data.quote_fill,
         )
 
     def _live_provider(self) -> LiveDataProvider:
         data = self.config.data
         session = self.config.session
-        feed = live_source(data.provider, client=self._client())
-        zone = ZoneInfo(session.timezone)
-        today = datetime.now(zone).date()
-        stop_parts = time.fromisoformat(session.end)
-        open_parts = time.fromisoformat(session.start)
-        stop_at = self._live_stop_at or datetime.combine(today, stop_parts, tzinfo=zone)
+        feed = live_source(data.provider, client=live_endpoint(self._client()))
+        schedule = session.resolve_schedule()
+        today = datetime.now(schedule.timezone).date()
+        stop_at = self._live_stop_at or datetime.combine(
+            today, schedule.closes_at, tzinfo=schedule.timezone
+        )
         return LiveDataProvider(
             feed,
             symbols=data.symbols,
@@ -357,9 +369,9 @@ class StrategyRunner:
             max_polls=session.max_polls,
             sleep=self._live_sleep,
             now=self._live_now,
-            session_zone=zone,
-            session_open=open_parts,
-            session_close=stop_parts,
+            session_zone=schedule.timezone,
+            session_open=schedule.opens_at,
+            session_close=schedule.closes_at,
             quote_fill=data.quote_fill,
         )
 
@@ -419,7 +431,7 @@ class StrategyRunner:
         try:
             return self._run(built)
         finally:
-            if self._owns_client and self.client is not None:
+            if self._owns_client and isinstance(self.client, Closable):
                 self.client.close()
                 self.client = None
                 self._owns_client = False
@@ -462,7 +474,10 @@ class StrategyRunner:
                     "remote paper matching only supports NoSlippage and NoLatency; "
                     "configure execution effects on the server"
                 )
-            remote = self._client().simulation
+            client = self._client()
+            if not isinstance(client, RemoteSimulationClient):
+                raise TypeError("remote paper client must expose simulation")
+            remote = client.simulation
             return (
                 remote,
                 self._execution or ServerSideExecution(),
@@ -495,13 +510,12 @@ class StrategyRunner:
             self._order_gateway = gateway
         if gateway is None:
             raise TransportNotConfigured("transport not configured")
-        ledger = getattr(gateway, "ledger", None)
-        if ledger is None or not hasattr(ledger, "create_account"):
+        if not isinstance(gateway, LedgerGateway) or not isinstance(gateway.ledger, Broker):
             raise TypeError(
                 "live_broker OrderGateway must expose a ledger; "
                 "this phase does not include a brokerage client"
             )
-        return ledger, ServerSideExecution(), gateway, False
+        return gateway.ledger, ServerSideExecution(), gateway, False
 
     def _reject_remote_policy(self, policy: ExecutionPolicy) -> None:
         """Remote paper matches on the server, which does not share this policy."""
@@ -560,7 +574,7 @@ class StrategyRunner:
             self._save_strategy_state(strategy)
             return result
         finally:
-            if owns_broker:
+            if owns_broker and isinstance(broker, Closable):
                 broker.close()
 
 

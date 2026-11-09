@@ -5,6 +5,7 @@
 Use it to:
 
 - fetch fund market data
+- read source-aware latest prices and checkpointed live events from TSETMC/Mofid
 - fetch IME CDC data
 - fetch USDT, XAU, and XAG data
 - collect missing history into local archives
@@ -510,3 +511,45 @@ pytest
 - The most important missing part is still true point-in-time history with strong coverage metadata.
 - The new collector helps fill that gap, but some historical data may still be unavailable if the platform never exposed it.
 
+
+## Source-aware prices and events (0.9.0)
+
+The standalone repository is the main SDK/strategy project. Platform API updates
+are integrated here while retaining the Strategy, simulation and archive APIs.
+
+```python
+from goldarb import LabClient
+
+with LabClient.from_env() as client:
+    snapshot = client.live.snapshot(
+        source="mofid", symbols=["گلدیس"], require_verified_source_time=False,
+    )
+    for observation in snapshot["observations"]:
+        print(observation["payload"]["last_price"], observation["source_timestamp"],
+              observation["source_time_status"], observation["received_at"])
+    batch = client.live.events(
+        source="mofid", symbols=["گلدیس"], cursor=snapshot["cursor"],
+        require_verified_source_time=False, block_ms=1000,
+    )
+```
+
+`source_timestamp` is the provider-reported clock; `received_at` is collector
+receipt time. `source_event_time` is reserved for verified trade time. The
+strict default excludes unverified observations; choose the explicit policy
+above to inspect raw provider data. An absent provider date/time stays null
+and remains available in `source_time_raw` where supplied. The current TSETMC
+MarketWatch response supplies clock-only evidence; never fill its missing date
+from the local computer or another provider.
+
+`live.subscribe()` yields long-poll batches. Persist each returned cursor after
+processing the complete batch, including empty batches. HTTP 409 is an explicit
+retention gap; handle it by resnapshotting deliberately. This is a quote-state
+feed, not a complete exchange trade tape.
+
+Examples: `python examples/inspect_source_time.py --source mofid` and
+`python examples/probe_live_delivery.py --source mofid --symbols گلدیس --duration 60`.
+Both use `GOLDARB_BASE_URL` and `GOLDARB_TOKEN`; they print no credentials.
+
+The platform alignment also adds `client.ml` research endpoints and the sorted
+`client.market.ime_daily()` convenience helper (server history window: 180 days).
+See [the Persian source-time guide](docs/source-time-fa.md) for usage details.
