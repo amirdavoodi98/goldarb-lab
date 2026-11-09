@@ -3,7 +3,7 @@
 Waits until 12:00 Tehran if needed, polls every second until 18:00.
 Requires GOLDARB_BASE_URL + GOLDARB_TOKEN (or username/password).
 
-    python examples/simulate_iran_session_1s.py
+    python examples/simulation/simulate_iran_session_1s.py
 """
 
 from __future__ import annotations

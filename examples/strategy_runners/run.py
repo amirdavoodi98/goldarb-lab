@@ -6,11 +6,11 @@ from `strategy.name` via the registry.
 
 Backtest:
 
-    .venv/bin/python examples/run.py examples/runtime.backtest.yaml
+    .venv/bin/python examples/strategy_runners/run.py examples/runtime.backtest.yaml
 
 Live paper (local matching, ≥20 funds by default):
 
-    .venv/bin/python examples/run.py examples/runtime.live.yaml
+    .venv/bin/python examples/strategy_runners/run.py examples/runtime.live.yaml
 
 Needs: uv pip install --python .venv/bin/python -e '.[yaml]'
 Live needs GOLDARB_TOKEN or GOLDARB_USERNAME+GOLDARB_PASSWORD.

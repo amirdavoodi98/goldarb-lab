@@ -3,7 +3,7 @@
 
 The live ``main`` is commented out. The active ``main`` replays one archive day.
 
-    .venv/bin/python examples/run_streak_live.py
+    .venv/bin/python examples/strategy_runners/run_streak_live.py
 
 Live needs GOLDARB_TOKEN or GOLDARB_USERNAME+GOLDARB_PASSWORD.
 """

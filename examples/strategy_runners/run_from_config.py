@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run one environment-agnostic Strategy from JSON, TOML, or YAML config.
 
-Prefer ``examples/run.py``; this wrapper remains for older docs/links.
+Prefer ``examples/strategy_runners/run.py``; this wrapper remains for older docs/links.
 """
 
 from __future__ import annotations

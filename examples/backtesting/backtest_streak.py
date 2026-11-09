@@ -2,7 +2,7 @@
 
 Three rising closes buy. Three falling closes sell.
 
-    .venv/bin/python examples/backtest_streak.py
+    .venv/bin/python examples/backtesting/backtest_streak.py
 """
 
 from goldarb import BacktestEngine, RunConfig, StreakStrategy

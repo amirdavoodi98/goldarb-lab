@@ -23,7 +23,7 @@ They are not imported by the SDK.
 
 ## Examples, tests, docs
 
-- `examples/` — runnable backtests, paper sessions, and small fetch scripts
+- `examples/` — organized by objective: `data_fetching/`, `backtesting/`, `simulation/`, `strategy_runners/`, `price_timestamps/`, plus runtime configs and bundled data
 - `tests/` — offline unit tests (`pytest`)
 - `docs/` — SDK usage, simulator guide, strategy guide, and ADR 0001
 

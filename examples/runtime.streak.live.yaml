@@ -1,6 +1,6 @@
 # Live paper for StreakStrategy. Local matching only; no real orders.
 #
-#   .venv/bin/python examples/run.py examples/runtime.streak.live.yaml
+#   .venv/bin/python examples/strategy_runners/run.py examples/runtime.streak.live.yaml
 #
 # Needs GOLDARB_TOKEN or GOLDARB_USERNAME+GOLDARB_PASSWORD.
 # Remove session.max_polls to run until session.end.

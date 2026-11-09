@@ -1,5 +1,0 @@
-{
-  "name": "goldarb-lab",
-  "user": "ubuntu",
-  "install": "bash .cursor/install.sh"
-}

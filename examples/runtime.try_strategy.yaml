@@ -1,6 +1,6 @@
 # Offline demo for PriceMomentumStrategy on bundled JSONL bars.
 # Run:
-#   .venv/bin/python examples/run.py examples/runtime.try_strategy.yaml
+#   .venv/bin/python examples/strategy_runners/run.py examples/runtime.try_strategy.yaml
 #
 # Needs: uv pip install --python .venv/bin/python -e '.[yaml]'
 

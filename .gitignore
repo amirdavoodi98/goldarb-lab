@@ -36,6 +36,17 @@ htmlcov/
 *.swp
 .DS_Store
 
+# AI / IDE tooling
+.cursor/
+.claude/
+.agent/
+.qwen/
+.windsurf/
+.copilot/
+.codex/
+.aider/
+.cursorrules
+
 # Local secrets (never commit tokens)
 .env
 .env.*

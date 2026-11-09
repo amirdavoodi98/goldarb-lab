@@ -48,6 +48,39 @@ with LabClient.from_env() as client:
 `grain` صندوق: `1s`، `1m`، یا `daily`.
 تاریخچهٔ `1s` در API یک روز تقویمی در هر درخواست است؛ SDK بازهٔ بلندتر را تکه می‌کند.
 
+### زمان خوانش قیمت از منبع
+
+در پاسخ `last_price` و برای هر نماد در `last_prices`، فیلد `fetched_at`
+زمان خوانش از منبع توسط سرویس جمع‌آوری داده است؛ قالب آن ISO 8601 با منطقهٔ زمانی
+است. `last_update` نام قدیمی همین فیلد است. `d_even` و `h_even` زمان معامله‌اند.
+
+در دادهٔ ورودی Strategy، هر `Quote` نیز `fetched_at` را به شکل `datetime` دارای
+منطقهٔ زمانی نگه می‌دارد. زمان خوانش دفتر سفارش جداگانه در
+`orderbook_fetched_at` موجود است. اگر `last` از میانگین بهترین خرید و فروش ساخته
+شود، `fetched_at` آن از دفتر سفارش گرفته می‌شود. این زمان‌ها با تأخیر، تکرار
+پولینگ یا ادغام NAV تغییر نمی‌کنند و دقت اعشاری منبع حفظ می‌شود.
+
+`MarketSnapshot.timestamp` در `LiveDataProvider` زمان رویداد پولینگ است؛ برای
+سنجش تازگی قیمت از `quote.fetched_at` استفاده کنید. اگر زمان خوانش موجود یا معتبر
+نباشد (از جمله زمان بدون منطقهٔ زمانی)، مقدار آن `None` است و با زمان فعلی یا
+زمان معامله جایگزین نمی‌شود. این فیلد برای کندل تاریخی نیز فقط در صورت وجود
+اطلاعات خوانش منبع پر می‌شود؛ زمان کندل، زمان خوانش نیست.
+
+نمونهٔ تصمیم‌گیری در Strategy با آستانهٔ دلخواه تیم تحلیل:
+
+```python
+from datetime import UTC, datetime
+
+max_age_seconds = 3.0
+for quote in snapshot.quotes:
+    if quote.fetched_at is None:
+        continue
+    age = (datetime.now(UTC) - quote.fetched_at).total_seconds()
+    if not 0 <= age <= max_age_seconds:
+        continue
+    # تولید سیگنال با quote.last
+```
+
 یونیورس جفت‌ها ۳۰ صندوق طلا است: `GOLD_FUND_SYMBOLS`.
 
 ### دانلود incremental و آرشیو نسخه‌دار
@@ -80,7 +113,7 @@ pip install -e ".[parquet]"
 
 ```bash
 pip install -e ".[yaml]"
-python examples/run_from_config.py examples/runtime.example.yaml
+python examples/strategy_runners/run_from_config.py examples/runtime.example.yaml
 ```
 
 ```python
@@ -232,11 +265,11 @@ with LabClient.from_env() as client:
 ## مثال‌های اجرایی
 
 ```bash
-python examples/backtest_month_1s.py
-python examples/simulate_iran_session_1s.py
-python examples/backtest_bubble_rank.py
-python examples/backtest_pair_zscore.py
-python examples/backtest_ma_band.py
+python examples/backtesting/backtest_month_1s.py
+python examples/simulation/simulate_iran_session_1s.py
+python examples/backtesting/backtest_bubble_rank.py
+python examples/backtesting/backtest_pair_zscore.py
+python examples/backtesting/backtest_ma_band.py
 ```
 
 `simulate_iran_session_1s.py` تا ۱۲:۰۰ تهران صبر می‌کند و تا ۱۸:۰۰ هر ثانیه پول می‌کند.

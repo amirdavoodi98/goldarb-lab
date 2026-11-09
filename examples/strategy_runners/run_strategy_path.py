@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Offline strategy path. Same call as examples/run.py.
+"""Offline strategy path. Same call as examples/strategy_runners/run.py.
 
-    .venv/bin/python examples/run_strategy_path.py
+    .venv/bin/python examples/strategy_runners/run_strategy_path.py
 
-``examples/run.py`` loads one config and runs
+``examples/strategy_runners/run.py`` loads one config and runs
 ``StrategyRunner.from_config(config).run()``. This script does that three
 times. Pass one config path to run a single case.
 

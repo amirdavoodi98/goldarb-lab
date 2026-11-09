@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, Sequence
 
-from ._http import encode_symbol, iter_date_chunks
 from ._util import rows_to_df, sort_by_key
+from ._http import encode_symbol, iter_date_chunks
 
 if TYPE_CHECKING:
     from ._http import LabHttp
@@ -21,7 +21,6 @@ _GRAIN_MAX_SPAN = {
     "1m": _1M_MAX_SPAN,
     "daily": _DAILY_MAX_SPAN,
 }
-
 
 class FundAPI:
     def __init__(self, http: LabHttp) -> None:
@@ -193,11 +192,17 @@ class FundAPI:
         return self._http.get_json("/api/v1/funds/orderbook/")
 
     def last_price(self, symbol: str) -> dict[str, Any]:
+        """Latest price with platform ``fetched_at`` (ISO 8601 source-read time).
+
+        ``last_update`` is its legacy alias; ``d_even``/``h_even`` are trade time.
+        Missing acquisition timestamps remain unknown, never replaced with now.
+        """
         path = f"/api/v1/funds/{encode_symbol(symbol)}/last-price/"
         payload = self._http.get_json(path)
         return payload if isinstance(payload, dict) else {"raw": payload}
 
     def last_prices(self) -> Any:
+        """Bulk last prices; each fund carries its own ``fetched_at``."""
         return self._http.get_json("/api/v1/funds/last-price/")
 
     def nav_live(self, symbol: str) -> dict[str, Any]:

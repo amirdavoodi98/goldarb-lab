@@ -4,8 +4,8 @@
 ``backtest`` and ``live_paper_local`` both send orders through the local
 adapter. This script does not call ``submit_buy`` and does not use the network.
 
-``simulate_local.py``, ``simulate_remote.py``, and ``simulate_agah_broker.py``
-are direct paper, not this path. ``run_premium_threshold`` is outside the
+``simulation/simulate_local.py``, ``simulation/simulate_remote.py``, and
+``simulation/simulate_agah_broker.py`` are direct paper, not this path. ``run_premium_threshold`` is outside the
 Strategy contract.
 """
 

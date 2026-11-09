@@ -10,11 +10,11 @@ Requires GOLDARB_TOKEN or GOLDARB_USERNAME+GOLDARB_PASSWORD.
 
 Smoke (~20 funds, 30 polls)::
 
-    .venv/bin/python examples/run_realtime_momentum.py
+    .venv/bin/python examples/strategy_runners/run_realtime_momentum.py
 
 Until session close::
 
-    .venv/bin/python examples/run_realtime_momentum.py --until-close
+    .venv/bin/python examples/strategy_runners/run_realtime_momentum.py --until-close
 """
 
 from __future__ import annotations

@@ -2,7 +2,7 @@
 
 Requires GOLDARB_BASE_URL + GOLDARB_TOKEN (or GOLDARB_USERNAME/PASSWORD).
 
-    python examples/backtest_month_1s.py
+    python examples/backtesting/backtest_month_1s.py
 """
 
 from __future__ import annotations

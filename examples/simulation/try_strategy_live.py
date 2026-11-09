@@ -8,15 +8,15 @@ Default universe: first 20 symbols from GOLD_FUND_SYMBOLS (30 funds total).
 
 Short smoke test (~30 polls, 20 funds):
 
-    .venv/bin/python examples/try_strategy_live.py
+    .venv/bin/python examples/simulation/try_strategy_live.py
 
 All 30 gold funds until session close:
 
-    .venv/bin/python examples/try_strategy_live.py --all-funds --until-close
+    .venv/bin/python examples/simulation/try_strategy_live.py --all-funds --until-close
 
 Custom list:
 
-    .venv/bin/python examples/try_strategy_live.py --symbols طلا,عیار,زر,گوهر
+    .venv/bin/python examples/simulation/try_strategy_live.py --symbols طلا,عیار,زر,گوهر
 """
 
 from __future__ import annotations

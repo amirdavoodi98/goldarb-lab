@@ -152,7 +152,7 @@ instance so the month-long premium window stays warm; pass `lookback_days=0`
 so live does not replay history the backtest already consumed. For a live-only
 cold start, use `lookback_days=20` instead.
 
-CLI: `python examples/backtest_month_1s.py` then `python examples/simulate_iran_session_1s.py`.
+CLI: `python examples/backtesting/backtest_month_1s.py` then `python examples/simulation/simulate_iran_session_1s.py`.
 
 ```python
 from goldarb import BacktestEngine, BubbleRankStrategy, RunConfig
@@ -168,8 +168,7 @@ result = BacktestEngine().run(
 Live 1s bars: `client.fund.candles_many(GOLD_FUND_SYMBOLS, start=..., end=..., grain="1s")`
 then `HistoricalDataProvider.from_symbol_bars(..., session_hours=True)`.
 
-
-Offline examples: `examples/backtest_bubble_rank.py`, `examples/backtest_pair_zscore.py`.
+Offline examples: `examples/backtesting/backtest_bubble_rank.py`, `examples/backtesting/backtest_pair_zscore.py`.
 
 Persian usage: [`docs/sdk-usage-fa.md`](docs/sdk-usage-fa.md).
 Requirements: [`docs/srs-sdk-v0.1.md`](docs/srs-sdk-v0.1.md).
@@ -199,9 +198,9 @@ Install `.[yaml]` for YAML configuration and `.[parquet]` for partitioned
 Parquet archives. Credentials remain in `GOLDARB_TOKEN` / environment variables,
 not in configuration files.
 
-`examples/simulate_local.py`, `examples/simulate_remote.py`, and
-`examples/simulate_agah_broker.py` are direct paper (`submit_buy`). They are
-not the Strategy path. `examples/run_strategy_gateway.py` runs one registered
+`examples/simulation/simulate_local.py`, `examples/simulation/simulate_remote.py`, and
+`examples/simulation/simulate_agah_broker.py` are direct paper (`submit_buy`). They are
+not the Strategy path. `examples/strategy_runners/run_strategy_gateway.py` runs one registered
 Strategy through `StrategyRunner` in `backtest` and `live_paper_local`; orders
 go through `OrderGateway`. `run_premium_threshold` is outside the Strategy
 contract. Strategy runs take the paper preset from `AppConfig`:
@@ -477,19 +476,19 @@ Collects missing data and writes coverage reports.
 ## Example scripts
 
 ```bash
-python examples/backtest_premium_threshold.py
-python examples/backtest_ma_band.py
-python examples/backtest_two_weeks_1s.py
-python examples/backtest_month_1s.py
-python examples/simulate_iran_session_1s.py
-python examples/simulate_agah_broker.py
-python examples/backtest_bubble_rank.py
-python examples/backtest_pair_zscore.py
-python examples/fetch_tala_1s.py
-python examples/fetch_tala_1m.py
-python examples/fetch_xau.py
-python examples/fetch_usdt.py
-python examples/run_strategy_path.py
+python examples/backtesting/backtest_premium_threshold.py
+python examples/backtesting/backtest_ma_band.py
+python examples/backtesting/backtest_two_weeks_1s.py
+python examples/backtesting/backtest_month_1s.py
+python examples/simulation/simulate_iran_session_1s.py
+python examples/simulation/simulate_agah_broker.py
+python examples/backtesting/backtest_bubble_rank.py
+python examples/backtesting/backtest_pair_zscore.py
+python examples/data_fetching/fetch_tala_1s.py
+python examples/data_fetching/fetch_tala_1m.py
+python examples/data_fetching/fetch_xau.py
+python examples/data_fetching/fetch_usdt.py
+python examples/strategy_runners/run_strategy_path.py
 ```
 
 ## Run tests

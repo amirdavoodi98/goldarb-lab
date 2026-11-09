@@ -4,13 +4,13 @@
 حباب منفی → خرید؛ حباب مثبت → فروش.
 
 دانلود و بک‌تست:
-    python examples/backtest_two_weeks_1s.py --download
+    python examples/backtesting/backtest_two_weeks_1s.py --download
 
 فقط آرشیو موجود، بدون اینترنت:
-    python examples/backtest_two_weeks_1s.py --archive archive/1s-14d
+    python examples/backtesting/backtest_two_weeks_1s.py --archive archive/1s-14d
 
 دمو بدون API:
-    python examples/backtest_two_weeks_1s.py --demo
+    python examples/backtesting/backtest_two_weeks_1s.py --demo
 """
 
 from __future__ import annotations

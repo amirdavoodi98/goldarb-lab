@@ -4,11 +4,11 @@
 Runs PriceMomentumStrategy on a short synthetic price series so you can see
 signals, orders, fills, and portfolio after one offline backtest.
 
-    .venv/bin/python examples/try_strategy_paper_broker.py
+    .venv/bin/python examples/simulation/try_strategy_paper_broker.py
 
 Optional flags:
 
-    .venv/bin/python examples/try_strategy_paper_broker.py --slippage 1 --fee 0.001
+    .venv/bin/python examples/simulation/try_strategy_paper_broker.py --slippage 1 --fee 0.001
 """
 
 from __future__ import annotations

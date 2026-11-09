@@ -97,8 +97,7 @@ def test_session_replay_prints_buy_and_sell_signals(tmp_path, capsys):
 
 def test_snapshot_from_live_uses_best_bid_ask_and_session_clock():
     # Pin the wall clock so CI outside 12:00–18:00 Tehran still passes.
-    # d_even/h_even is 13:45; keep now within 60s so the live stamp is not
-    # replaced as stale (see snapshot_from_live).
+    # d_even/h_even is the trade time, independent of the source-read time.
     now = datetime(2026, 8, 29, 13, 45, 10, tzinfo=TEHRAN)
     snapshot = snapshot_from_live(
         symbol="طلا",

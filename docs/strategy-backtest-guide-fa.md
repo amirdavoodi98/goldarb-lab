@@ -50,7 +50,7 @@ export GOLDARB_TOKEN=your_token_here
 تست سریع نصب:
 
 ```bash
-python examples/run_price_momentum_from_config.py
+python examples/strategy_runners/run_price_momentum_from_config.py
 ```
 
 خروجی مشابه این است:
@@ -66,7 +66,7 @@ strategy=price_momentum mode=offline_backtest signals=4 orders=4 fills=4 equity=
 1. یک آرشیو محلی داشته باش، یا از دموی کوچک استفاده کن.
 2. کلاس Strategy را بنویس.
 3. یک YAML بساز.
-4. یک اسکریپت شبیه `examples/run_from_config.py` بنویس که کلاس Strategy را از `config.strategy.params` بسازد.
+4. یک اسکریپت شبیه `examples/strategy_runners/run_from_config.py` بنویس که کلاس Strategy را از `config.strategy.params` بسازد.
 5. `StrategyRunner.from_config(config).run(strategy)` را اجرا کن.
 6. `RunResult` را بخوان.
 
@@ -74,12 +74,12 @@ strategy=price_momentum mode=offline_backtest signals=4 orders=4 fills=4 equity=
 
 | کار | فرمان |
 | --- | --- |
-| بک‌تست حباب روی آرشیو یک‌روزه | `python examples/run_from_config.py` |
-| بک‌تست مومنتوم روی دیتای خیلی کوچک | `python examples/run_price_momentum_from_config.py` |
+| بک‌تست حباب روی آرشیو یک‌روزه | `python examples/strategy_runners/run_from_config.py` |
+| بک‌تست مومنتوم روی دیتای خیلی کوچک | `python examples/strategy_runners/run_price_momentum_from_config.py` |
 
 دموی سبک مومنتوم در `examples/data/price-momentum-demo/` است و معمولاً زیر یک ثانیه تمام می‌شود.
 
-`examples/run_from_config.py` روی `archive/1s-14d` و یک روز (`2026-09-15`) اجرا می‌شود؛ معمولاً چند ثانیه طول می‌کشد. اگر `start/end` را برداری و کل آرشیو ۱۴روزه را با SQLite فایل اجرا کنی، ممکن است خیلی کند شود.
+`examples/strategy_runners/run_from_config.py` روی `archive/1s-14d` و یک روز (`2026-09-15`) اجرا می‌شود؛ معمولاً چند ثانیه طول می‌کشد. اگر `start/end` را برداری و کل آرشیو ۱۴روزه را با SQLite فایل اجرا کنی، ممکن است خیلی کند شود.
 
 ---
 
@@ -350,11 +350,11 @@ latency:
 
 `create_account` و `equity_history` روی موتور paper می‌مانند، نه روی درگاه.
 
-`examples/simulate_local.py`، `examples/simulate_remote.py`، و `examples/simulate_agah_broker.py` کاغذ مستقیم هستند، نه مسیر Strategy. سفارش را با `submit_buy` می‌فرستند.
+`examples/simulation/simulate_local.py`، `examples/simulation/simulate_remote.py`، و `examples/simulation/simulate_agah_broker.py` کاغذ مستقیم هستند، نه مسیر Strategy. سفارش را با `submit_buy` می‌فرستند.
 
 `run_premium_threshold` خارج از قرارداد `Strategy` است. به `StrategyContext` و `OrderGateway` وصل نیست.
 
-نمونهٔ مسیر Strategy، با یک کلاس ثبت‌شده در بک‌تست و `live_paper_local`: `examples/run_strategy_gateway.py`.
+نمونهٔ مسیر Strategy، با یک کلاس ثبت‌شده در بک‌تست و `live_paper_local`: `examples/strategy_runners/run_strategy_gateway.py`.
 
 سایر فیلدها:
 
@@ -474,8 +474,8 @@ result = BacktestEngine().run(
 
 مثال:
 
-- `examples/run_from_config.py` از `BubbleSignStrategy` استفاده می‌کند.
-- `examples/run_price_momentum_from_config.py` از `PriceMomentumStrategy`.
+- `examples/strategy_runners/run_from_config.py` از `BubbleSignStrategy` استفاده می‌کند.
+- `examples/strategy_runners/run_price_momentum_from_config.py` از `PriceMomentumStrategy`.
 
 هر دو از `AppConfig` و `StrategyRunner` می‌روند.
 
@@ -498,7 +498,7 @@ runtime:
 
 `live_paper_remote` سفارش را از همان `OrderGateway` به شبیه‌ساز سرور می‌فرستد. `feed()` محلی اجرا نمی‌شود. سفارش واقعی به بازار ارسال نمی‌شود.
 
-همان Strategy را بدون ویرایش `on_market_data` بین `backtest` و `live_paper_local` عوض کن. هر دو از آداپتور محلی درگاه رد می‌شوند. اسکریپت `examples/run_strategy_gateway.py` همین کار را می‌کند.
+همان Strategy را بدون ویرایش `on_market_data` بین `backtest` و `live_paper_local` عوض کن. هر دو از آداپتور محلی درگاه رد می‌شوند. اسکریپت `examples/strategy_runners/run_strategy_gateway.py` همین کار را می‌کند.
 
 ---
 
@@ -510,7 +510,7 @@ runtime:
 - انتظار اینکه `strategy.name` یک کلاس ثبت‌نشده را بسازد؛ فقط نام‌های `STRATEGY_REGISTRY` ساخته می‌شوند
 - زدن HTTP داخل Strategy
 - عوض کردن `runtime.broker` به `agah` به امید سفارش واقعی؛ آن مقدار فقط preset کاغذی است
-- حساب کردن `examples/simulate_local.py`، `simulate_remote.py`، یا `simulate_agah_broker.py` به‌عنوان مسیر Strategy؛ آن‌ها paper مستقیم‌اند
+- حساب کردن `examples/simulation/simulate_local.py`، `examples/simulation/simulate_remote.py`، یا `examples/simulation/simulate_agah_broker.py` به‌عنوان مسیر Strategy؛ آن‌ها paper مستقیم‌اند
 - وصل کردن `run_premium_threshold` به Strategy؛ آن موتور خارج از این قرارداد است
 - اجرای کل آرشیو ۱۴روزه با `fill_session: true` برای تست اول
 - فراموش کردن `allow_short: true` برای استراتژی جفت

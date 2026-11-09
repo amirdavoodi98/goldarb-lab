@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
@@ -148,6 +148,8 @@ def snapshot_from_live(
         )
     )
     book = orderbook or {}
+    fetched_at = source_read_timestamp(last_price)
+    orderbook_fetched_at = source_read_timestamp(book)
     bid = _positive_decimal(book.get("best_bid"))
     ask = _positive_decimal(book.get("best_ask"))
     buy = book.get("buy_orders") or []
@@ -156,10 +158,9 @@ def snapshot_from_live(
     ask_size = _positive_decimal(sell[0].get("volume") if sell else None)
     if last is None and bid is not None and ask is not None:
         last = (bid + ask) / Decimal(2)
+        fetched_at = orderbook_fetched_at
     if last is None and bid is None and ask is None:
         return None
-    if timestamp < clock and (clock - timestamp).total_seconds() > 60:
-        timestamp = clock
     return MarketSnapshot(
         event_id=f"live:{symbol}:{last}:{bid}:{ask}",
         timestamp=timestamp,
@@ -171,9 +172,30 @@ def snapshot_from_live(
                 ask=ask,
                 bid_size=bid_size,
                 ask_size=ask_size,
+                fetched_at=fetched_at if last is not None else None,
+                orderbook_fetched_at=orderbook_fetched_at,
             ),
         ),
     )
+
+
+def source_read_timestamp(payload: Mapping[str, Any]) -> datetime | None:
+    """Read acquisition time only; never infer it from trade time or the poll clock.
+
+    ``last_update`` is the platform's legacy alias for ``fetched_at``.
+    Missing, malformed or timezone-less values remain unknown.
+    """
+    for key in ("fetched_at", "last_update"):
+        raw = payload.get(key)
+        if not raw:
+            continue
+        try:
+            parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if parsed.tzinfo is not None and parsed.utcoffset() is not None:
+            return parsed
+    return None
 
 
 def _positive_decimal(value: Any) -> Decimal | None:

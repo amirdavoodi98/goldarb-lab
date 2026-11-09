@@ -1,7 +1,7 @@
 # Offline backtest — same strategy/fee/slippage shape as runtime.live.yaml.
 # Only runtime.mode + data.* differ.
 #
-#   .venv/bin/python examples/run.py examples/runtime.backtest.yaml
+#   .venv/bin/python examples/strategy_runners/run.py examples/runtime.backtest.yaml
 #
 # Needs: uv pip install --python .venv/bin/python -e '.[yaml]'
 # Data: archive/1s-14d (30 gold funds, 1s bars).

@@ -80,10 +80,16 @@ class Quote:
     ask_size: Decimal | None = None
     premium: Decimal | None = None
     nav: Decimal | None = None
+    # Source acquisition times, independent of the snapshot/poll clock.
+    fetched_at: datetime | None = None
+    orderbook_fetched_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not str(self.symbol).strip():
             raise DomainError("quote.symbol is required")
+        for stamp in (self.fetched_at, self.orderbook_fetched_at):
+            if stamp is not None and (stamp.tzinfo is None or stamp.utcoffset() is None):
+                raise DomainError("quote source timestamps must be timezone-aware")
 
 
 @dataclass(frozen=True)

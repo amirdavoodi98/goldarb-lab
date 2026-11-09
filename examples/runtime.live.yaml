@@ -1,7 +1,7 @@
 # Live paper (local matching) — same strategy/fee/slippage as runtime.backtest.yaml.
 # Only runtime.mode + data.* (+ session poll) differ.
 #
-#   .venv/bin/python examples/run.py examples/runtime.live.yaml
+#   .venv/bin/python examples/strategy_runners/run.py examples/runtime.live.yaml
 #
 # Needs credentials: GOLDARB_TOKEN or GOLDARB_USERNAME+GOLDARB_PASSWORD
 # and: uv pip install --python .venv/bin/python -e '.[yaml]'

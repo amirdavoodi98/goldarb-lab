@@ -20,6 +20,7 @@ from .session import (
     is_iran_trading_day,
     session_timeline,
     snapshot_from_live,
+    source_read_timestamp,
 )
 from .signals.stats import premium_from_row, to_float
 from .simulation.models import MarketSnapshot, Quote, decimal_value
@@ -381,7 +382,9 @@ def snapshots_from_bars(
             MarketSnapshot(
                 event_id=f"ma-band:{symbol}:{timestamp.isoformat()}",
                 timestamp=timestamp,
-                quotes=(Quote(symbol=symbol, last=close),),
+                quotes=(
+                    Quote(symbol=symbol, last=close, fetched_at=source_read_timestamp(row)),
+                ),
             )
         )
     return snapshots
@@ -810,7 +813,7 @@ def _quote_from_live(
             payload.setdefault(key, value)
     snapshot = snapshot_from_live(
         symbol=symbol,
-        last_price=payload,
+        last_price=dict(last_price),
         orderbook=dict(orderbook) if orderbook else None,
         now=now,
     )
@@ -834,6 +837,8 @@ def _quote_from_live(
             ask_size=base.ask_size,
             premium=None if premium is None else decimal_value(premium),
             nav=None if nav_value is None else decimal_value(nav_value),
+            fetched_at=base.fetched_at,
+            orderbook_fetched_at=base.orderbook_fetched_at,
         ),
         quote_fill,
     )
@@ -871,6 +876,7 @@ def _quote_from_fields(
             ask_size=_optional_positive(fields, "ask_size"),
             premium=None if premium is None else decimal_value(premium),
             nav=None if nav is None else decimal_value(nav),
+            fetched_at=source_read_timestamp(fields),
         ),
         quote_fill,
     )

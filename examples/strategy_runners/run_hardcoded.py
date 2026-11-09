@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hardcoded AppConfig via fluent setters (no YAML).
 
-    .venv/bin/python examples/run_hardcoded.py
+    .venv/bin/python examples/strategy_runners/run_hardcoded.py
 """
 
 from __future__ import annotations
