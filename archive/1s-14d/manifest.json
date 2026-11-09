@@ -1,0 +1,261 @@
+{
+  "schema_version": 2,
+  "format": "jsonl",
+  "source": "https://goldarb.ir",
+  "grain": "1s",
+  "start": "2026-09-15",
+  "end": "2026-09-15",
+  "actual_start": "2026-09-15T08:30:00+00:00",
+  "actual_end": "2026-09-15T14:00:05+00:00",
+  "symbols": [
+    "آتش",
+    "آلتون",
+    "امرالد",
+    "تابش",
+    "درخشان",
+    "درنا",
+    "زر",
+    "زرفام",
+    "زروان",
+    "زرگر",
+    "طلا",
+    "عیار",
+    "قیراط",
+    "لیان",
+    "مثقال",
+    "ناب",
+    "نفیس",
+    "کهربا",
+    "گلدیس",
+    "گوهر"
+  ],
+  "bar_count": 54572,
+  "counts": {
+    "آتش": 875,
+    "آلتون": 1445,
+    "امرالد": 584,
+    "تابش": 831,
+    "درخشان": 1373,
+    "درنا": 275,
+    "زر": 2165,
+    "زرفام": 1162,
+    "زروان": 1131,
+    "زرگر": 417,
+    "طلا": 9318,
+    "عیار": 15285,
+    "قیراط": 837,
+    "لیان": 979,
+    "مثقال": 5642,
+    "ناب": 939,
+    "نفیس": 882,
+    "کهربا": 6505,
+    "گلدیس": 788,
+    "گوهر": 3139
+  },
+  "checksums": {
+    "آتش": "67c9a5c3cb59df9ba030ad1330e3e6c4ffe7cb1519d4162b2c874534e58b25b9",
+    "آلتون": "4a3d8af5eb48a610b3ac9aa7f816fb964fecc9178c1e6017f994f72f62718ca1",
+    "امرالد": "3d20ac9697a0d4fe7c340e146bbe6e23c7924e59b1e9b1a19875e2c159d8fccf",
+    "تابش": "af8a28f7f2cc18d140329e0c0ecbd8e3b33c5849d8931539f85b8807d8a388c6",
+    "درخشان": "f5dab04016ee841e6c12543c057147f0691d845a6113c3c5b8c8b31f5beb40f5",
+    "درنا": "38822ba90a54e43ca09cb03d4342031318b426e61dd41ae54d6900fcd85729fc",
+    "زر": "fa8a41e7811ffc07f06853436f3e7c4f561a44543361e67f8b49f314997118bd",
+    "زرفام": "9a88956faf7adda71851792af5836c23b22e01e4efadefe4ac97a0646edc477a",
+    "زروان": "e31d6012446c69043a9da500e4fc623760a141ca6abe41ef14ce6098902bead9",
+    "زرگر": "e4cf5b6a8b7aaa4ab092df6a257de4064d1bb5293f826bc19e0e866b104e9ced",
+    "طلا": "8e18c25d778654778817d786cfea17c5fe206ced815b1a5955961f01c8ebbfe0",
+    "عیار": "f0330f536b5d2c3b42a661680da530c2abca573c45eac1436eee8d885002bd20",
+    "قیراط": "77a361fa16edc8cd39ffe61bcb4e401f5904be616d624841794048a0d6b65dea",
+    "لیان": "f9ebc2c9f66513e88b5d65b04bb2b0628742df123010ad3b1f96bc52a5561b1f",
+    "مثقال": "7694eebfb6945cb37b18d1826bd86cf07d2688c6fd0365975b9925238d53f215",
+    "ناب": "897265b5cd2e895db6439445e9d244a887cf53b39c231bc891de737a561c39c2",
+    "نفیس": "309fb1a96e09fd5e9581bdea8a766a80bbfca68d048c78953c2434bddbe22286",
+    "کهربا": "2bde80edfa976cc707ae9bc2750d2bc99655ff7b234e6d61704ee054deecefd0",
+    "گلدیس": "67f428e3cad547dc4f1a3c858a861ae0a5b0cffa36a86dc5c1c534f643e849ce",
+    "گوهر": "1bf3ba4eb1305a3df3abd03577b5cbea0f2eecd7b5c4a029ae047143c580e3cf"
+  },
+  "quality": {
+    "آتش": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "آلتون": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "امرالد": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "تابش": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "درخشان": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "درنا": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "زر": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "زرفام": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "زروان": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "زرگر": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "طلا": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "عیار": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "قیراط": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "لیان": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "مثقال": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "ناب": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "نفیس": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "کهربا": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "گلدیس": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    },
+    "گوهر": {
+      "duplicates_removed": 0,
+      "invalid_rows": 0,
+      "out_of_order_rows": 0,
+      "covered_days": [
+        "2026-09-15"
+      ],
+      "missing_days": []
+    }
+  },
+  "created_at": "2026-09-30T12:56:19.575711+00:00",
+  "updated_at": "2026-09-30T12:56:36.776284+00:00"
+}
