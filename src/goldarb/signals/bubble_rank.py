@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import statistics
-from typing import Any
+from dataclasses import dataclass
+
+from .models import BubbleRanking, SymbolScore
+from .results import RankingPair, RankingResult, SymbolRanking
 
 BUBBLE_RANK_WINDOW_DAYS = 20
 BUBBLE_RANK_MIN_SAMPLES = 10
@@ -13,7 +16,7 @@ BUBBLE_RANK_MIN_GAP = 1.0
 def empty_bubble_rank(
     *,
     window_days: int = BUBBLE_RANK_WINDOW_DAYS,
-) -> dict[str, Any]:
+) -> BubbleRanking:
     return {
         "window_days": window_days,
         "rankings": [],
@@ -26,7 +29,7 @@ def compute_symbol_score(
     *,
     min_samples: int = BUBBLE_RANK_MIN_SAMPLES,
     window_days: int = BUBBLE_RANK_WINDOW_DAYS,
-) -> dict[str, Any]:
+) -> SymbolScore:
     values = list(series) if series else []
     n = len(values)
     current = round(values[-1], 4) if values else None
@@ -53,54 +56,76 @@ def compute_symbol_score(
     }
 
 
-def compute_rankings(
+@dataclass(frozen=True)
+class _ScoredSymbol:
+    """Validated candidate: ranking arithmetic always has a numeric score."""
+
+    symbol: str
+    score: float
+
+
+def evaluate_rankings(
     by_symbol: dict[str, list[float]],
     *,
     min_samples: int = BUBBLE_RANK_MIN_SAMPLES,
     window_days: int = BUBBLE_RANK_WINDOW_DAYS,
     min_gap: float = BUBBLE_RANK_MIN_GAP,
-) -> dict[str, Any]:
-    rankings: list[dict[str, Any]] = []
+) -> RankingResult:
+    """Evaluate rankings as immutable domain objects."""
+    rankings: list[SymbolRanking] = []
     for symbol, series in by_symbol.items():
         row = compute_symbol_score(
             series,
             min_samples=min_samples,
             window_days=window_days,
         )
-        rankings.append({"symbol": symbol, **row})
+        rankings.append(SymbolRanking(symbol=symbol, **row))
 
     rankings.sort(
         key=lambda row: (
-            0 if row["status"] == "ok" else 1,
-            -(row["score"] if row["score"] is not None else float("-inf")),
-            row["symbol"] or "",
+            0 if row.status == "ok" else 1,
+            -(row.score if row.score is not None else float("-inf")),
+            row.symbol or "",
         )
     )
 
-    ok = [row for row in rankings if row["status"] == "ok" and row["score"] is not None]
-    best_pair: dict[str, Any] | None = None
+    ok = [
+        _ScoredSymbol(row.symbol, score)
+        for row in rankings
+        if row.status == "ok" and (score := row.score) is not None
+    ]
+    best_pair: RankingPair | None = None
     if len(ok) >= 2:
-        long_row = max(ok, key=lambda row: (row["score"], row["symbol"] or ""))
-        short_row = min(ok, key=lambda row: (row["score"], row["symbol"] or ""))
-        if long_row["symbol"] != short_row["symbol"]:
-            gap = round(float(long_row["score"]) - float(short_row["score"]), 4)
+        long_row = max(ok, key=lambda row: (row.score, row.symbol or ""))
+        short_row = min(ok, key=lambda row: (row.score, row.symbol or ""))
+        if long_row.symbol != short_row.symbol:
+            gap = round(long_row.score - short_row.score, 4)
             active = gap >= min_gap
-            best_pair = {
-                "active": active,
-                "long": long_row["symbol"],
-                "short": short_row["symbol"],
-                "long_score": long_row["score"],
-                "short_score": short_row["score"],
-                "gap": gap,
-                "label_fa": (
-                    f"خرید {long_row['symbol']} / فروش {short_row['symbol']}"
+            best_pair = RankingPair(
+                active=active,
+                long_symbol=long_row.symbol,
+                short_symbol=short_row.symbol,
+                long_score=long_row.score,
+                short_score=short_row.score,
+                gap=gap,
+                label_fa=(
+                    f"خرید {long_row.symbol} / فروش {short_row.symbol}"
                     if active
                     else "بدون سیگنال جفتی"
                 ),
-            }
+            )
 
-    return {
-        "window_days": window_days,
-        "rankings": rankings,
-        "best_pair": best_pair,
-    }
+    return RankingResult(window_days, tuple(rankings), best_pair)
+
+
+def compute_rankings(
+    by_symbol: dict[str, list[float]],
+    *,
+    min_samples: int = BUBBLE_RANK_MIN_SAMPLES,
+    window_days: int = BUBBLE_RANK_WINDOW_DAYS,
+    min_gap: float = BUBBLE_RANK_MIN_GAP,
+) -> BubbleRanking:
+    """Backward-compatible dictionary API; domain consumers use evaluate_rankings."""
+    return evaluate_rankings(
+        by_symbol, min_samples=min_samples, window_days=window_days, min_gap=min_gap
+    ).to_dict()

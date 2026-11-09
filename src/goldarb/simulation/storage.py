@@ -6,7 +6,7 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Self
+from typing import Self
 
 from .models import (
     Account,
@@ -244,7 +244,7 @@ class SQLitePersistence:
 SQLiteRepository = SQLitePersistence
 
 
-def account_from_row(row: Any) -> Account:
+def account_from_row(row: sqlite3.Row) -> Account:
     return Account(
         id=row["id"],
         label=row["label"],
@@ -260,7 +260,7 @@ def account_from_row(row: Any) -> Account:
     )
 
 
-def order_from_row(row: Any) -> Order:
+def order_from_row(row: sqlite3.Row) -> Order:
     status_raw = row["status"]
     status = OrderStatus.ACCEPTED if status_raw == "OPEN" else OrderStatus(status_raw)
     return Order(
@@ -293,7 +293,7 @@ def order_from_row(row: Any) -> Order:
     )
 
 
-def fill_from_row(row: Any) -> Fill:
+def fill_from_row(row: sqlite3.Row) -> Fill:
     return Fill(
         id=row["id"],
         order_id=row["order_id"],

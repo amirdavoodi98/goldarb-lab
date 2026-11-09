@@ -29,5 +29,8 @@ jobs:
           pip install ruff
           ruff check src tests examples
 
+      - name: Type check application contracts
+        run: mypy
+
       - name: Pytest
         run: pytest -q

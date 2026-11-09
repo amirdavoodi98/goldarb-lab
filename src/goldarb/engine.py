@@ -17,6 +17,9 @@ from uuid import uuid4
 from .data import DataProvider
 from .execution import (
     Broker,
+    Closable,
+    ConfigurableExecution,
+    DelayedOrderSettlement,
     ExecutionDriver,
     FeeModel,
     LatencyModel,
@@ -27,7 +30,7 @@ from .execution import (
     SlippageModel,
 )
 from .execution_policy import ExecutionPolicy
-from .gateway import OrderGateway
+from .gateway import AccountBinding, DeferredFills, MarketObserver, OrderGateway
 from .simulation.engine import ZERO
 from .simulation.local import LocalSimulator
 from .simulation.models import (
@@ -38,7 +41,7 @@ from .simulation.models import (
     Portfolio,
     decimal_value,
 )
-from .strategy import Strategy, StrategyContext
+from .strategy import EngineLog, Signal, Strategy, StrategyContext
 
 OnEvent = Callable[[str, StrategyContext], None]
 
@@ -117,8 +120,8 @@ class RunResult:
     equity_history: list[dict[str, str]]
     metrics: Metrics
     config: RunConfig
-    signals: list[Any] = field(default_factory=list)
-    log: list[Any] = field(default_factory=list)
+    signals: list[Signal] = field(default_factory=list)
+    log: list[EngineLog] = field(default_factory=list)
     # Class name of the OrderGateway ``runtime.mode`` selected.
     gateway: str = ""
     # One dict per OrderGateway.submit, captured at submit time.
@@ -191,10 +194,8 @@ class SimulationLoop:
         self.latency = latency
         self.execution = execution or LocalFeedExecution()
         self.on_event = on_event
-        if gateway is not None:
-            bind = getattr(gateway, "bind_account", None)
-            if bind is not None:
-                bind(account_id)
+        if isinstance(gateway, AccountBinding):
+            gateway.bind_account(account_id)
         self.gateway = gateway
         self.ctx = StrategyContext(
             broker,
@@ -236,20 +237,14 @@ class SimulationLoop:
     def _note_market(self, snapshot: MarketSnapshot) -> None:
         """Optional hook for a recording gateway. Paper gateways do not use it."""
         gateway = self.gateway
-        if gateway is None:
-            return
-        note = getattr(gateway, "note_market", None)
-        if note is not None:
-            note(snapshot)
+        if isinstance(gateway, MarketObserver):
+            gateway.note_market(snapshot)
 
     def _release_recorded_fills(self) -> None:
         """Apply fills queued by a recording gateway. Paper gateways have none."""
         gateway = self.gateway
-        if gateway is None:
-            return
-        release = getattr(gateway, "release_fills", None)
-        if release is not None:
-            release()
+        if isinstance(gateway, DeferredFills):
+            gateway.release_fills()
 
     def _notify_new_fills(self) -> None:
         self._release_recorded_fills()
@@ -303,7 +298,7 @@ class SimulationEngine:
                 latency=latency_model,
             )
             own = True
-        elif hasattr(broker, "configure_execution"):
+        elif isinstance(broker, ConfigurableExecution):
             broker.configure_execution(
                 fee=fee_model,
                 slippage=slippage_model,
@@ -342,7 +337,7 @@ class SimulationEngine:
             )
             for snapshot in _iter_events(provider):
                 loop.process(snapshot)
-            if hasattr(broker, "settle_delayed_orders"):
+            if isinstance(broker, DelayedOrderSettlement):
                 broker.settle_delayed_orders()
             loop.finish()
             portfolio = broker.portfolio(account_id)
@@ -376,7 +371,7 @@ class SimulationEngine:
                 ],
             )
         finally:
-            if own:
+            if own and isinstance(broker, Closable):
                 broker.close()
 
 

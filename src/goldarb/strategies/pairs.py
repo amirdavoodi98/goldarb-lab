@@ -33,11 +33,11 @@ def history_reset_requested(ctx: StrategyContext) -> bool:
 
 def dump_premium_points(
     series: Sequence[tuple[datetime, float]],
-) -> list[list[Any]]:
+) -> list[list[str | float]]:
     return [[stamp.isoformat(), value] for stamp, value in series]
 
 
-def load_premium_points(raw: Any) -> list[tuple[datetime, float]]:
+def load_premium_points(raw: object) -> list[tuple[datetime, float]]:
     if not isinstance(raw, list):
         raise ValueError("premium history must be a list")
     points: list[tuple[datetime, float]] = []

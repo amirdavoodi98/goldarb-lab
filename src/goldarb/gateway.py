@@ -23,7 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, runtime_checkable
 from uuid import uuid4
 
 from .simulation.models import (
@@ -40,9 +40,14 @@ from .simulation.models import (
     decimal_value,
 )
 from .simulation.paper_broker import LocalPaperBroker
+from .simulation.portfolio_service import LedgerPosition
 from .simulation.remote import RemoteSimulator
 
+if TYPE_CHECKING:
+    from .execution import Broker
+
 ZERO = Decimal(0)
+BrokerT = TypeVar("BrokerT", bound="Broker")
 
 
 @runtime_checkable
@@ -68,10 +73,35 @@ class OrderGateway(Protocol):
     def cash(self) -> Decimal: ...
 
 
-class _PaperOrderGateway:
+@runtime_checkable
+class LedgerGateway(Protocol):
+    """Optional account ledger supplied by a live recording gateway."""
+
+    @property
+    def ledger(self) -> Broker: ...
+
+
+@runtime_checkable
+class AccountBinding(Protocol):
+    """Gateway capability used once the engine has selected its account."""
+
+    def bind_account(self, account_id: str) -> None: ...
+
+
+@runtime_checkable
+class MarketObserver(Protocol):
+    def note_market(self, snapshot: MarketSnapshot) -> None: ...
+
+
+@runtime_checkable
+class DeferredFills(Protocol):
+    def release_fills(self) -> None: ...
+
+
+class _PaperOrderGateway(Generic[BrokerT]):
     """Shared account binding for the two paper adapters."""
 
-    def __init__(self, broker: Any, account_id: str | None = None) -> None:
+    def __init__(self, broker: BrokerT, account_id: str | None = None) -> None:
         self._broker = broker
         self._account_id = None if account_id is None else str(account_id)
 
@@ -97,7 +127,7 @@ class _PaperOrderGateway:
         return self._broker.get_account(self._account()).cash
 
 
-class LocalPaperOrderGateway(_PaperOrderGateway):
+class LocalPaperOrderGateway(_PaperOrderGateway[LocalPaperBroker]):
     """``OrderGateway`` over ``LocalPaperBroker``. Does not feed the book."""
 
     def __init__(self, broker: LocalPaperBroker, account_id: str | None = None) -> None:
@@ -126,7 +156,7 @@ class LocalPaperOrderGateway(_PaperOrderGateway):
         )
 
 
-class RemoteSimulatorOrderGateway(_PaperOrderGateway):
+class RemoteSimulatorOrderGateway(_PaperOrderGateway[RemoteSimulator]):
     """``OrderGateway`` over ``RemoteSimulator``.
 
     Does not call ``feed`` and does not match locally. ``time_in_force`` is
@@ -198,7 +228,7 @@ class _RecordingLedger:
         self._order_ids: list[str] = []
         self._fills: list[Fill] = []
         self._pending: list[str] = []
-        self._lots: dict[str, tuple[Decimal, Decimal, Decimal]] = {}
+        self._lots: dict[str, LedgerPosition] = {}
         self._last: dict[str, Decimal] = {}
         self._as_of: datetime | None = None
         self._equity: list[dict[str, str]] = []
@@ -273,8 +303,10 @@ class _RecordingLedger:
         unrealized = ZERO
         market_value = ZERO
         realized = ZERO
-        for symbol, (quantity, average, lot_realized) in sorted(self._lots.items()):
-            realized += lot_realized
+        for symbol, lot in sorted(self._lots.items()):
+            quantity = lot.quantity
+            average = lot.average_cost
+            realized += lot.realized_pnl
             if quantity == ZERO:
                 continue
             mark = self._last.get(symbol, average)
@@ -287,7 +319,7 @@ class _RecordingLedger:
                     symbol=symbol,
                     quantity=quantity,
                     average_cost=average,
-                    realized_pnl=lot_realized,
+                    realized_pnl=lot.realized_pnl,
                     mark_price=mark,
                     unrealized_pnl=upnl,
                     market_value=value,
@@ -413,7 +445,8 @@ class _RecordingLedger:
         account = self._require_bound()
         if order.side is not Side.SELL or account.allow_short:
             return False
-        held = self._lots.get(order.symbol, (ZERO, ZERO, ZERO))[0]
+        lot = self._lots.get(order.symbol)
+        held = ZERO if lot is None else lot.quantity
         return held - order.quantity < ZERO
 
     def _apply_fill(self, order: Order, price: Decimal) -> None:
@@ -451,7 +484,10 @@ class _RecordingLedger:
         )
 
     def _apply_lot(self, symbol: str, side: Side, quantity: Decimal, price: Decimal) -> None:
-        held, average, realized = self._lots.get(symbol, (ZERO, ZERO, ZERO))
+        lot = self._lots.get(symbol, LedgerPosition(symbol, ZERO, ZERO, ZERO))
+        held = lot.quantity
+        average = lot.average_cost
+        realized = lot.realized_pnl
         signed = quantity if side is Side.BUY else -quantity
         new_qty = held + signed
         if held == ZERO or (held > ZERO and signed > ZERO) or (held < ZERO and signed < ZERO):
@@ -465,7 +501,7 @@ class _RecordingLedger:
             realized = realized + (price - average) * closing * direction
             crossed = (held > ZERO and new_qty < ZERO) or (held < ZERO and new_qty > ZERO)
             new_average = price if crossed else average
-        self._lots[symbol] = (new_qty, new_average, realized)
+        self._lots[symbol] = LedgerPosition(symbol, new_qty, new_average, realized)
 
     def _require_bound(self) -> Account:
         if self._account is None:
@@ -571,7 +607,7 @@ class RecordingOrderGateway:
 
 
 def order_gateway_for(
-    broker: Any,
+    broker: Broker,
     account_id: str | None = None,
 ) -> LocalPaperOrderGateway | RemoteSimulatorOrderGateway:
     """Wrap the paper engine the caller already selected.
