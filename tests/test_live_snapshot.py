@@ -95,6 +95,33 @@ def test_provider_timestamp_reaches_sdk_without_becoming_verified_trade_time():
     assert event["source_timestamp"] != event["received_at"]
 
 
+@pytest.mark.parametrize("source_time", ["2026-11-11T09:05:00+03:30", None])
+@respx.mock
+def test_source_clock_and_receipt_clock_remain_independent(source_time):
+    """A 09:05 price received at 09:05:35 must retain both clocks, even if unknown."""
+    event = {
+        "symbol": "طلا",
+        "payload": {"last_price": "100"},
+        "source_timestamp": source_time,
+        "received_at": "2026-11-11T09:05:35.123456+03:30",
+        "source_event_time": None,
+        "source_time_status": "unverified" if source_time else "missing",
+    }
+    respx.get("https://example.test/api/v1/lab/market-data/snapshot/").respond(
+        200, json={"schema_version": 1, "observations": [event]}
+    )
+    with LabClient(base_url="https://example.test", token="test-token") as client:
+        result = client.live.snapshot(require_verified_source_time=False)["observations"][0]
+    assert result == event
+    if source_time:
+        from datetime import datetime
+
+        delay = datetime.fromisoformat(result["received_at"]) - datetime.fromisoformat(source_time)
+        assert delay.total_seconds() == 35.123456
+    else:
+        assert result["source_timestamp"] is None
+
+
 def test_package_and_release_metadata_versions_agree():
     import tomllib
     from pathlib import Path

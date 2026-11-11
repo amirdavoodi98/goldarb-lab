@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, Sequence
 
-from ._util import rows_to_df, sort_by_key
 from ._http import encode_symbol, iter_date_chunks
+from ._source_time import with_bulk_price_source_time, with_price_source_time
+from ._util import rows_to_df, sort_by_key
 
 if TYPE_CHECKING:
     from ._http import LabHttp
@@ -196,14 +197,16 @@ class FundAPI:
 
         ``last_update`` is its legacy alias; ``d_even``/``h_even`` are trade time.
         Missing acquisition timestamps remain unknown, never replaced with now.
+        ``source_timestamp`` is the independent source clock; legacy date/time
+        pairs are exposed with ``source_time_status='unverified'``.
         """
         path = f"/api/v1/funds/{encode_symbol(symbol)}/last-price/"
         payload = self._http.get_json(path)
-        return payload if isinstance(payload, dict) else {"raw": payload}
+        return with_price_source_time(payload) if isinstance(payload, dict) else {"raw": payload}
 
     def last_prices(self) -> Any:
-        """Bulk last prices; each fund carries its own ``fetched_at``."""
-        return self._http.get_json("/api/v1/funds/last-price/")
+        """Bulk prices with independent source_timestamp and fetched_at per fund."""
+        return with_bulk_price_source_time(self._http.get_json("/api/v1/funds/last-price/"))
 
     def nav_live(self, symbol: str) -> dict[str, Any]:
         """

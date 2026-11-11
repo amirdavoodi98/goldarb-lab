@@ -12,6 +12,7 @@ replace HTTP JSON responses with fixed sample data while using the real SDK.
 
 | Scenario | Command |
 | --- | --- |
+| Both source and collector clocks from client.fund (single and bulk) | `python examples/price_timestamps/fund_source_timestamp.py` |
 | Single-symbol API price and timestamped quote | `python examples/price_timestamps/price_timestamp_single.py` |
 | Bulk prices with a separate freshness decision per symbol | `python examples/price_timestamps/price_timestamp_bulk.py` |
 | Strategy input: poll time versus source time, repeated prices and NAV | `python examples/price_timestamps/price_timestamp_provider.py` |
@@ -27,6 +28,15 @@ The provider's second poll advances the event time without changing source-read
 times. The history example shows that a forward-filled price keeps getting older.
 
 ## Real API data
+
+For both clocks from the ordinary fund API, run
+`python examples/price_timestamps/fund_source_timestamp.py --live`.
+`source_timestamp` is independent of `fetched_at`; it is `None` when unknown.
+Legacy date/time pairs are marked `source_time_status="unverified"` because
+the upstream server may have inferred their date. Explicit server source
+timestamps and their verification status take precedence. Strategy quotes
+preserve these fields too; an order-book midpoint uses only its own book's
+source clock, if available.
 
 The single, bulk and provider examples support `--live`. They load the repository's
 `.env` and use `GOLDARB_BASE_URL` and `GOLDARB_TOKEN`. Alternatively, export those

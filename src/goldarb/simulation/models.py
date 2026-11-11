@@ -83,11 +83,13 @@ class Quote:
     # Source acquisition times, independent of the snapshot/poll clock.
     fetched_at: datetime | None = None
     orderbook_fetched_at: datetime | None = None
+    source_timestamp: datetime | None = None
+    source_time_status: str = "missing"
 
     def __post_init__(self) -> None:
         if not str(self.symbol).strip():
             raise DomainError("quote.symbol is required")
-        for stamp in (self.fetched_at, self.orderbook_fetched_at):
+        for stamp in (self.fetched_at, self.orderbook_fetched_at, self.source_timestamp):
             if stamp is not None and (stamp.tzinfo is None or stamp.utcoffset() is None):
                 raise DomainError("quote source timestamps must be timezone-aware")
 

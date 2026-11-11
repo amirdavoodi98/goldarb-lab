@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
+from ._source_time import price_source_time
 from .config import QUOTE_FILL_MODES
 from .feed_contracts import (
     BulkCandleFeed,
@@ -364,12 +365,16 @@ def snapshots_from_bars(
         timestamp = _bar_timestamp(row)
         if close is None or timestamp is None:
             continue
+        source_timestamp, source_time_status = price_source_time(row)
         snapshots.append(
             MarketSnapshot(
                 event_id=f"ma-band:{symbol}:{timestamp.isoformat()}",
                 timestamp=timestamp,
                 quotes=(
-                    Quote(symbol=symbol, last=close, fetched_at=source_read_timestamp(row)),
+                    Quote(
+                        symbol=symbol, last=close, fetched_at=source_read_timestamp(row),
+                        source_timestamp=source_timestamp, source_time_status=source_time_status,
+                    ),
                 ),
             )
         )
@@ -830,6 +835,8 @@ def _quote_from_live(
             nav=None if nav_value is None else decimal_value(nav_value),
             fetched_at=base.fetched_at,
             orderbook_fetched_at=base.orderbook_fetched_at,
+            source_timestamp=base.source_timestamp,
+            source_time_status=base.source_time_status,
         ),
         quote_fill,
     )
@@ -857,6 +864,7 @@ def _quote_from_fields(
     if nav_raw is None:
         nav_raw = fields.get("nav_price")
     nav = to_float(nav_raw)
+    source_timestamp, source_time_status = price_source_time(fields)
     return normalize_quote(
         Quote(
             symbol=symbol,
@@ -868,6 +876,8 @@ def _quote_from_fields(
             premium=None if premium is None else decimal_value(premium),
             nav=None if nav is None else decimal_value(nav),
             fetched_at=source_read_timestamp(fields),
+            source_timestamp=source_timestamp,
+            source_time_status=source_time_status,
         ),
         quote_fill,
     )

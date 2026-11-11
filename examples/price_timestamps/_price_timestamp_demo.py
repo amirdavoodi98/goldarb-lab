@@ -20,9 +20,11 @@ def demo_response(path, params=None):
     path = unquote(path)
     prices = [
         {"symbol": "طلا", "last_price": "100", "status": "ok",
+         "d_even": "20260829", "h_even": "125925",
          "fetched_at": (DEMO_NOW - timedelta(seconds=1)).isoformat()},
         # Deliberately old: the example's own freshness rule must reject this.
         {"symbol": "عیار", "last_price": "200", "status": "ok",
+         "d_even": "20260829", "h_even": "125400",
          "fetched_at": (DEMO_NOW - timedelta(minutes=5)).isoformat()},
     ]
     books = [
@@ -64,4 +66,5 @@ def show_quote(quote, now):
     age = None if quote.fetched_at is None else (now - quote.fetched_at).total_seconds()
     age_text = "unknown" if age is None else f"{age:.6f}s"
     print(f"{quote.symbol}: last={quote.last}, fetched_at={quote.fetched_at}, age={age_text}")
+    print(f"  source_timestamp={quote.source_timestamp}, status={quote.source_time_status}")
     print(f"  bid={quote.bid}, ask={quote.ask}, book read={quote.orderbook_fetched_at}")

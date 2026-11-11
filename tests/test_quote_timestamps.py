@@ -39,7 +39,10 @@ def test_bulk_prices_keep_independent_source_times_across_polls(quote_fill):
         ]})
     )
     with LabClient(base_url="https://example.test", token="test") as client:
-        assert client.fund.last_prices() == prices
+        assert client.fund.last_prices() == {"funds": [
+            {**row, "source_timestamp": None, "source_time_status": "missing"}
+            for row in prices["funds"]
+        ]}
         provider = LiveDataProvider(
             LabLiveFeed(client), symbols=("طلا", "عیار"),
             include_session_bars=False, now=lambda: clock, quote_fill=quote_fill,
@@ -101,7 +104,9 @@ def test_single_price_passes_through_source_time():
         return_value=httpx.Response(200, json=payload)
     )
     with LabClient(base_url="https://example.test", token="test") as client:
-        assert client.fund.last_price("طلا") == payload
+        assert client.fund.last_price("طلا") == {
+            **payload, "source_timestamp": None, "source_time_status": "missing",
+        }
 
 
 def test_legacy_alias_and_timezone_validation():

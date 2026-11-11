@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from ._source_time import price_source_time
 from .simulation.models import MarketSnapshot, Quote, decimal_value
 
 TEHRAN = ZoneInfo("Asia/Tehran")
@@ -150,6 +151,7 @@ def snapshot_from_live(
     book = orderbook or {}
     fetched_at = source_read_timestamp(last_price)
     orderbook_fetched_at = source_read_timestamp(book)
+    source_timestamp, source_time_status = price_source_time(last_price)
     bid = _positive_decimal(book.get("best_bid"))
     ask = _positive_decimal(book.get("best_ask"))
     buy = book.get("buy_orders") or []
@@ -159,6 +161,7 @@ def snapshot_from_live(
     if last is None and bid is not None and ask is not None:
         last = (bid + ask) / Decimal(2)
         fetched_at = orderbook_fetched_at
+        source_timestamp, source_time_status = price_source_time(book)
     if last is None and bid is None and ask is None:
         return None
     return MarketSnapshot(
@@ -174,6 +177,8 @@ def snapshot_from_live(
                 ask_size=ask_size,
                 fetched_at=fetched_at if last is not None else None,
                 orderbook_fetched_at=orderbook_fetched_at,
+                source_timestamp=source_timestamp if last is not None else None,
+                source_time_status=source_time_status if last is not None else "missing",
             ),
         ),
     )
