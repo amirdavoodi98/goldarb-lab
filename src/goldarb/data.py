@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
 from ._source_time import price_source_time
@@ -17,6 +17,7 @@ from .feed_contracts import (
     BulkNavs,
     BulkOrderbooks,
     FundClient,
+    LatestTradeFeed,
     LiveMarketFeed,
 )
 from .session import (
@@ -46,11 +47,20 @@ class DataProvider(Protocol):
 class LabLiveFeed:
     """Adapt ``LabClient`` (or ``client.fund``) to ``LiveMarketFeed``."""
 
-    def __init__(self, client: LiveMarketFeed | FundClient[LiveMarketFeed]) -> None:
+    def __init__(
+        self, client: LiveMarketFeed | FundClient[LiveMarketFeed], *,
+        price_policy: Literal["latest", "tsetmc"] = "latest",
+    ) -> None:
+        if price_policy not in {"latest", "tsetmc"}:
+            raise ValueError("price_policy must be latest or tsetmc")
+        self.price_policy = price_policy
         self._fund: LiveMarketFeed = client.fund if isinstance(client, FundClient) else client
 
     def last_price(self, symbol: str) -> dict[str, Any]:
-        payload = self._fund.last_price(symbol)
+        if self.price_policy == "latest" and isinstance(self._fund, LatestTradeFeed):
+            payload = self._fund.latest_price(symbol)
+        else:
+            payload = self._fund.last_price(symbol)
         return payload if isinstance(payload, dict) else {}
 
     def orderbook(self, symbol: str) -> dict[str, Any]:
@@ -84,6 +94,8 @@ class LabLiveFeed:
         }
 
     def last_prices(self) -> object:
+        if self.price_policy == "latest" and isinstance(self._fund, LatestTradeFeed):
+            return self._fund.latest_prices()
         if isinstance(self._fund, BulkLastPrices):
             return self._fund.last_prices()
         return None

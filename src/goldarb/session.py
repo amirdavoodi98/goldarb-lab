@@ -135,6 +135,11 @@ def snapshot_from_live(
     now: datetime | None = None,
 ) -> MarketSnapshot | None:
     """Build a snapshot from last-price (+ optional best bid/ask)."""
+    # A trusted trade request must not turn into a book midpoint or close fallback.
+    if last_price.get("selection_policy") == "newest_verified_trade" and (
+        last_price.get("status") != "ok" or last_price.get("last_price") is None
+    ):
+        return None
     clock = now or datetime.now(TEHRAN)
     timestamp = _live_timestamp(last_price, orderbook, clock)
     stale = str(last_price.get("status") or "") == "stale"

@@ -44,7 +44,7 @@ def test_bulk_prices_keep_independent_source_times_across_polls(quote_fill):
             for row in prices["funds"]
         ]}
         provider = LiveDataProvider(
-            LabLiveFeed(client), symbols=("طلا", "عیار"),
+            LabLiveFeed(client, price_policy="tsetmc"), symbols=("طلا", "عیار"),
             include_session_bars=False, now=lambda: clock, quote_fill=quote_fill,
         )
         first = provider.poll()[0]

@@ -45,6 +45,15 @@ class BulkLastPrices(Protocol):
 
 
 @runtime_checkable
+class LatestTradeFeed(Protocol):
+    """Optional trusted multi-source prices; legacy custom feeds remain supported."""
+
+    def latest_price(self, symbol: str) -> dict[str, Any]: ...
+
+    def latest_prices(self) -> object: ...
+
+
+@runtime_checkable
 class BulkNavs(Protocol):
     def navs_live(self) -> object: ...
 

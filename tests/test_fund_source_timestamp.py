@@ -4,7 +4,6 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-import httpx
 import pytest
 import respx
 
@@ -96,8 +95,10 @@ def test_both_clocks_reach_strategy_across_polls_without_nav_contamination(mode)
                               "fetched_at": FETCH} for row in rows]}
     )
     with LabClient(base_url="https://example.test", token="test") as client:
-        provider = LiveDataProvider(LabLiveFeed(client), symbols=("طلا", "عیار"),
-                                    include_session_bars=False, now=lambda: clock, quote_fill=mode)
+        provider = LiveDataProvider(
+            LabLiveFeed(client, price_policy="tsetmc"), symbols=("طلا", "عیار"),
+            include_session_bars=False, now=lambda: clock, quote_fill=mode,
+        )
         first = provider.poll()[0]
         clock += timedelta(seconds=1)
         second = provider.poll()[0]
