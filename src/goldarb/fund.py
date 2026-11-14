@@ -208,6 +208,24 @@ class FundAPI:
         """Bulk prices with independent source_timestamp and fetched_at per fund."""
         return with_bulk_price_source_time(self._http.get_json("/api/v1/funds/last-price/"))
 
+    def latest_price(self, symbol: str) -> dict[str, Any]:
+        """Newest verified last trade across TSETMC, Mofid and Agah (IRR).
+
+        Source trade time determines selection and freshness. No vendor/legacy
+        fallback: unavailable/stale prices must not be used for strategy orders.
+        Requires the platform's Lab market stream and verified collector clocks.
+        """
+        path = f"/api/v1/funds/{encode_symbol(symbol)}/latest-price/"
+        payload = self._http.get_json(path)
+        return _trusted_price(payload)
+
+    def latest_prices(self) -> dict[str, Any]:
+        """Bulk equivalent of latest_price(), including unavailable symbols."""
+        payload = self._http.get_json("/api/v1/funds/latest-price/")
+        if not isinstance(payload, dict) or not isinstance(payload.get("funds"), list):
+            raise ValueError("Unsupported latest-price response")
+        return {**payload, "funds": [_trusted_price(row) for row in payload["funds"]]}
+
     def nav_live(self, symbol: str) -> dict[str, Any]:
         """
         Near-live TSETMC NAV tip for one fund.
@@ -251,3 +269,14 @@ class FundAPI:
     def symbols(self) -> list[str]:
         """Convenience: sorted symbol strings from ``meta()``."""
         return [str(r["symbol"]) for r in self.meta() if r.get("symbol")]
+
+
+def _trusted_price(payload: Any) -> dict[str, Any]:
+    """Malformed trusted responses must not enable a legacy midpoint fallback."""
+    if (
+        not isinstance(payload, dict)
+        or payload.get("selection_policy") != "newest_verified_trade"
+        or payload.get("status") not in {"ok", "stale", "unavailable"}
+    ):
+        raise ValueError("Unsupported latest-price response")
+    return with_price_source_time(payload)
